@@ -12,8 +12,7 @@
     filtros: { q: '', data: '', status: 'todos' },
     semanaRef: new Date(),
     semanaFiltros: { q: '', empresa: '', obra: '' },
-    manSemanaRef: segundaDaSemana(new Date()),
-    manQtdSemanas: 8,
+    manMesRef: new Date(),
     manNovo: { nome: '', funcao: '', empresa: '' },
     manPessoas: {}
   };
@@ -1186,8 +1185,22 @@
     return manItens();
   }
 
-  function semanaEm(inicio, n) {
-    return diasDaSemana(new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + n * 7));
+  function semanasDoMes(ref) {
+    var ano = ref.getFullYear();
+    var mes = ref.getMonth();
+    var ultimo = new Date(ano, mes + 1, 0);
+    var ini = segundaDaSemana(new Date(ano, mes, 1));
+    var semanas = [];
+    for (var i = 0; ; i++) {
+      var d = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate() + i * 7);
+      if (d > ultimo) break;
+      semanas.push(diasDaSemana(d));
+    }
+    return semanas;
+  }
+
+  function mesmoMes(d, ref) {
+    return d.getMonth() === ref.getMonth() && d.getFullYear() === ref.getFullYear();
   }
 
   function rotuloMes(ref) {
@@ -1322,7 +1335,9 @@
     var head2 = '<tr>';
     var hoje = new Date();
     dias.forEach(function (d) {
-      var cls = 'dia-col' + (mesmoDia(d, hoje) ? ' hoje' : '');
+      var cls = 'dia-col';
+      if (!mesmoMes(d, state.manMesRef)) cls += ' fora';
+      else if (mesmoDia(d, hoje)) cls += ' hoje';
       head1 += '<th class="' + cls + '" colspan="2"><b>' + d.getDate() + '</b> ' +
         DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + '</th>';
       head2 += '<th class="' + cls + ' rot-e">E</th><th class="' + cls + ' rot-s">S</th>';
@@ -1352,8 +1367,9 @@
         '<td class="sub">' + manInput('empresa', r.empresa, who) + '</td>';
       r.dias.forEach(function (d, i) {
         var diaIso = isoDate(dias[i]);
-        corpo += '<td class="hora e' + (d.e ? '' : ' vazio') + '">' + manInputHora(d.e, r.chave, diaIso) + '</td>' +
-          '<td class="hora s' + (d.s ? '' : ' vazio') + '">' + manInputHora(d.s, r.chave, diaIso) + '</td>';
+        var fora = mesmoMes(dias[i], state.manMesRef) ? '' : ' fora';
+        corpo += '<td class="hora e' + fora + (d.e ? '' : ' vazio') + '">' + manInputHora(d.e, r.chave, diaIso) + '</td>' +
+          '<td class="hora s' + fora + (d.s ? '' : ' vazio') + '">' + manInputHora(d.s, r.chave, diaIso) + '</td>';
       });
       if (ehAdmin()) {
         corpo += '<td class="nowrap"><button type="button" class="btn danger sm" data-man-excluir="' +
@@ -1385,31 +1401,21 @@
     manPessoas();
 
     var hoje = new Date();
-    var inicio = state.manSemanaRef;
-    var html = '';
-    var mesAnterior = null;
-    var nSemanas = state.manQtdSemanas;
+    var rotulo = $('#manMesLabel');
+    if (rotulo) rotulo.textContent = rotuloMes(state.manMesRef);
 
-    for (var i = 0; i < nSemanas; i++) {
-      var dias = semanaEm(inicio, i);
-      var chaveMes = dias[0].getFullYear() + '-' + dias[0].getMonth();
-      if (chaveMes !== mesAnterior) {
-        mesAnterior = chaveMes;
-        html += '<div class="mes-divisor"><span>' + rotuloMes(dias[0]) + '</span></div>';
-      }
+    var semanas = semanasDoMes(state.manMesRef);
+    var html = '<div class="mes-divisor"><span>' + rotuloMes(state.manMesRef) + '</span></div>';
+    semanas.forEach(function (dias) {
       html += blocoSemana(dias, mesmoDia(dias[0], segundaDaSemana(hoje)));
-    }
+    });
     cont.innerHTML = html;
 
     var contagem = $('#manContagem');
     if (contagem) {
       var totalPessoas = Object.keys(state.manPessoas || {}).length;
-      contagem.textContent = totalPessoas + ' pessoas · ' + nSemanas + ' semanas a partir de ' +
-        pad(inicio.getDate()) + '/' + pad(inicio.getMonth() + 1);
+      contagem.textContent = semanas.length + ' semanas · ' + totalPessoas + ' pessoas';
     }
-
-    var btnMais = $('#manMaisSemanas');
-    if (btnMais) btnMais.hidden = false;
   }
 
   function manPessoa(chave) {
@@ -1553,8 +1559,8 @@
 
   function exportarManualCsv() {
     var linhas = [];
-    for (var i = 0; i < state.manQtdSemanas; i++) {
-      var dias = semanaEm(state.manSemanaRef, i);
+    var semanas = semanasDoMes(state.manMesRef);
+    semanas.forEach(function (dias) {
       var ini = dias[0];
       var fim = dias[6];
       var head = ['Semana ' + pad(ini.getDate()) + '/' + pad(ini.getMonth() + 1) + ' a ' +
@@ -1574,8 +1580,9 @@
         linhas.push(l.map(csvCell).join(';'));
       });
       linhas.push('');
-    }
-    baixarCsv('registro-manual-' + isoDate(new Date()) + '.csv', linhas);
+    });
+    baixarCsv('registro-manual-' + rotuloMes(state.manMesRef)
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.csv', linhas);
   }
 
   function bind() {
@@ -1675,22 +1682,16 @@
     $('#listaPessoasList').addEventListener('click', onListaClick);
 
     $('#btnManExportar').addEventListener('click', exportarManualCsv);
-    $('#manSemanaAnterior').addEventListener('click', function () {
-      state.manSemanaRef = new Date(state.manSemanaRef.getFullYear(), state.manSemanaRef.getMonth(),
-        state.manSemanaRef.getDate() - 7);
+    $('#manMesAnterior').addEventListener('click', function () {
+      state.manMesRef = new Date(state.manMesRef.getFullYear(), state.manMesRef.getMonth() - 1, 1);
       renderManual();
     });
-    $('#manSemanaProxima').addEventListener('click', function () {
-      state.manSemanaRef = new Date(state.manSemanaRef.getFullYear(), state.manSemanaRef.getMonth(),
-        state.manSemanaRef.getDate() + 7);
+    $('#manMesProximo').addEventListener('click', function () {
+      state.manMesRef = new Date(state.manMesRef.getFullYear(), state.manMesRef.getMonth() + 1, 1);
       renderManual();
     });
-    $('#manSemanaAtual').addEventListener('click', function () {
-      state.manSemanaRef = segundaDaSemana(new Date());
-      renderManual();
-    });
-    $('#manMaisSemanas').addEventListener('click', function () {
-      state.manQtdSemanas += 4;
+    $('#manMesAtual').addEventListener('click', function () {
+      state.manMesRef = new Date();
       renderManual();
     });
     $('#manSemanas').addEventListener('input', function (e) {

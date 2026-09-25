@@ -1571,3 +1571,16 @@ table.espelho {
 .mes-divisor:first-child {
   margin-top: 4px;
 }
+
+.espelho th.dia-col.fora,
+.espelho th.rot-e.fora,
+.espelho th.rot-s.fora {
+  background: #f1f5f9;
+  color: #a8b3c2;
+  opacity: 0.6;
+}
+
+.espelho td.hora.fora {
+  background: #f8fafc;
+  opacity: 0.45;
+}

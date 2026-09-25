@@ -172,15 +172,18 @@
           <p id="manContagem">0 registros</p>
         </div>
         <div class="cal-top cal-top-inline">
-          <button type="button" class="btn ghost sm" id="manSemanaAnterior">← Semana anterior</button>
-          <button type="button" class="btn sm semana-hoje" id="manSemanaAtual">Semana atual</button>
-          <button type="button" class="btn ghost sm" id="manSemanaProxima">Próxima semana →</button>
-          <button type="button" class="btn ghost sm" id="manMaisSemanas">Mostrar mais semanas</button>
+          <div class="field cal-field">
+            <label>Mês</label>
+            <strong id="manMesLabel">—</strong>
+          </div>
+          <button type="button" class="btn ghost sm" id="manMesAnterior">← Mês anterior</button>
+          <button type="button" class="btn sm semana-hoje" id="manMesAtual">Mês atual</button>
+          <button type="button" class="btn ghost sm" id="manMesProximo">Próximo mês →</button>
           <button type="button" class="btn ghost sm" id="btnManExportar">Exportar CSV</button>
         </div>
       </div>
 
-      <p class="movement-help">As semanas ficam uma embaixo da outra, em sequência. Use a <strong>primeira linha</strong> de cada semana para incluir alguém novo: digite o nome e a hora direto na coluna do dia — a data é a do próprio dia. Ao terminar o mês, as semanas do mês seguinte já aparecem abaixo.</p>
+      <p class="movement-help">As semanas do mês selecionado ficam uma embaixo da outra, do dia 1 ao último dia do mês. Use a <strong>primeira linha</strong> de cada semana para incluir alguém novo: digite o nome e a hora direto na coluna do dia. Os botões acima trocam de mês.</p>
 
       <div id="manSemanas"></div>
     </section>
@@ -391,6 +394,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="js/firebase-config.js?v=4"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=46?v=6"></script>
+  <script defer src="js/app.js?v=47?v=6"></script>
 </body>
 </html>
