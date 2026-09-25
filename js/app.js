@@ -1185,6 +1185,8 @@
     return manItens();
   }
 
+  var MAN_INI = new Date(2026, 8, 21);
+
   function semanasDoMes(ref) {
     var ano = ref.getFullYear();
     var mes = ref.getMonth();
@@ -1199,15 +1201,15 @@
     return semanas;
   }
 
-  function mesmoMes(d, ref) {
-    return d.getMonth() === ref.getMonth() && d.getFullYear() === ref.getFullYear();
-  }
-
   function rotuloMes(ref) {
     var f = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
       'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
     var m = f[ref.getMonth()] || '';
     return m.charAt(0).toUpperCase() + m.slice(1) + ' / ' + ref.getFullYear();
+  }
+
+  function rotuloData(d) {
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
   }
 
   function manPessoas() {
@@ -1232,7 +1234,8 @@
 
   function manLinhas(dias) {
     var inicio = dias[0];
-    var fim = dias[6];
+    var fim = dias[dias.length - 1];
+    var total = dias.length;
     var mapa = {};
     var ordem = [];
 
@@ -1261,7 +1264,7 @@
       if (a.placa && !row.placa) row.placa = a.placa;
 
       if (te && dentroDoIntervalo(te, inicio, fim)) {
-        for (var i = 0; i < 7; i++) {
+        for (var i = 0; i < total; i++) {
           if (mesmoDia(te, dias[i])) {
             var hE = pad(te.getHours()) + ':' + pad(te.getMinutes());
             if (!row.dias[i].e || hE < row.dias[i].e.hora) {
@@ -1272,7 +1275,7 @@
         }
       }
       if (ts && dentroDoIntervalo(ts, inicio, fim)) {
-        for (var j = 0; j < 7; j++) {
+        for (var j = 0; j < total; j++) {
           if (mesmoDia(ts, dias[j])) {
             var hS = pad(ts.getHours()) + ':' + pad(ts.getMinutes());
             if (!row.dias[j].s || hS > row.dias[j].s.hora) {
@@ -1335,9 +1338,7 @@
     var head2 = '<tr>';
     var hoje = new Date();
     dias.forEach(function (d) {
-      var cls = 'dia-col';
-      if (!mesmoMes(d, state.manMesRef)) cls += ' fora';
-      else if (mesmoDia(d, hoje)) cls += ' hoje';
+      var cls = 'dia-col' + (mesmoDia(d, hoje) ? ' hoje' : '');
       head1 += '<th class="' + cls + '" colspan="2"><b>' + d.getDate() + '</b> ' +
         DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + '</th>';
       head2 += '<th class="' + cls + ' rot-e">E</th><th class="' + cls + ' rot-s">S</th>';
@@ -1348,9 +1349,9 @@
 
   function blocoSemana(dias, ehAtual) {
     var ini = dias[0];
-    var fim = dias[6];
+    var fim = dias[dias.length - 1];
     var linhas = manLinhas(dias);
-    var cols = 3 + 14 + (ehAdmin() ? 1 : 0);
+    var cols = 3 + dias.length * 2 + (ehAdmin() ? 1 : 0);
     var corpo = '';
     var ultimaEmpresa = null;
 
@@ -1367,9 +1368,8 @@
         '<td class="sub">' + manInput('empresa', r.empresa, who) + '</td>';
       r.dias.forEach(function (d, i) {
         var diaIso = isoDate(dias[i]);
-        var fora = mesmoMes(dias[i], state.manMesRef) ? '' : ' fora';
-        corpo += '<td class="hora e' + fora + (d.e ? '' : ' vazio') + '">' + manInputHora(d.e, r.chave, diaIso) + '</td>' +
-          '<td class="hora s' + fora + (d.s ? '' : ' vazio') + '">' + manInputHora(d.s, r.chave, diaIso) + '</td>';
+        corpo += '<td class="hora e' + (d.e ? '' : ' vazio') + '">' + manInputHora(d.e, r.chave, diaIso) + '</td>' +
+          '<td class="hora s' + (d.s ? '' : ' vazio') + '">' + manInputHora(d.s, r.chave, diaIso) + '</td>';
       });
       if (ehAdmin()) {
         corpo += '<td class="nowrap"><button type="button" class="btn danger sm" data-man-excluir="' +
@@ -1385,8 +1385,7 @@
 
     return '<section class="semana-bloco' + (ehAtual ? ' atual' : '') + '">' +
       '<header class="semana-head">' +
-      '<strong>Semana de ' + pad(ini.getDate()) + '/' + pad(ini.getMonth() + 1) + ' a ' +
-      pad(fim.getDate()) + '/' + pad(fim.getMonth() + 1) + '</strong>' +
+      '<strong>Semana de ' + rotuloData(ini) + ' a ' + rotuloData(fim) + '</strong>' +
       (ehAtual ? '<span class="tag-atual">atual</span>' : '') +
       '</header>' +
       '<div class="espelho-wrap"><table class="espelho">' +
@@ -1404,17 +1403,29 @@
     var rotulo = $('#manMesLabel');
     if (rotulo) rotulo.textContent = rotuloMes(state.manMesRef);
 
-    var semanas = semanasDoMes(state.manMesRef);
-    var html = '<div class="mes-divisor"><span>' + rotuloMes(state.manMesRef) + '</span></div>';
-    semanas.forEach(function (dias) {
-      html += blocoSemana(dias, mesmoDia(dias[0], segundaDaSemana(hoje)));
+    var ref = state.manMesRef;
+    var ultimo = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
+    var html = '<div class="mes-divisor"><span>' + rotuloMes(ref) + '</span></div>';
+    var blocos = 0;
+
+    semanasDoMes(ref).forEach(function (dias) {
+      var vis = dias.filter(function (d) {
+        return d >= MAN_INI && d <= ultimo;
+      });
+      if (!vis.length) return;
+      blocos++;
+      html += blocoSemana(vis, mesmoDia(dias[0], segundaDaSemana(hoje)));
     });
+
+    if (!blocos) {
+      html += '<p class="semana-vazia-bloco">O registro começa em ' + rotuloData(MAN_INI) + '.</p>';
+    }
     cont.innerHTML = html;
 
     var contagem = $('#manContagem');
     if (contagem) {
       var totalPessoas = Object.keys(state.manPessoas || {}).length;
-      contagem.textContent = semanas.length + ' semanas · ' + totalPessoas + ' pessoas';
+      contagem.textContent = blocos + ' semanas · ' + totalPessoas + ' pessoas';
     }
   }
 
@@ -1558,20 +1569,20 @@
   }
 
   function exportarManualCsv() {
+    var ref = state.manMesRef;
+    var ultimo = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
     var linhas = [];
-    var semanas = semanasDoMes(state.manMesRef);
-    semanas.forEach(function (dias) {
-      var ini = dias[0];
-      var fim = dias[6];
-      var head = ['Semana ' + pad(ini.getDate()) + '/' + pad(ini.getMonth() + 1) + ' a ' +
-        pad(fim.getDate()) + '/' + pad(fim.getMonth() + 1)];
-      dias.forEach(function (d) {
+    semanasDoMes(ref).forEach(function (dias) {
+      var vis = dias.filter(function (d) { return d >= MAN_INI && d <= ultimo; });
+      if (!vis.length) return;
+      var head = ['Semana ' + rotuloData(vis[0]) + ' a ' + rotuloData(vis[vis.length - 1])];
+      vis.forEach(function (d) {
         var lbl = DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + ' ' + d.getDate();
         head.push(lbl + ' E');
         head.push(lbl + ' S');
       });
       linhas.push(head.map(csvCell).join(';'));
-      manLinhas(dias).forEach(function (r) {
+      manLinhas(vis).forEach(function (r) {
         var l = [r.nome, r.funcao, r.empresa];
         r.dias.forEach(function (d) {
           l.push(d.e ? d.e.hora : '');
@@ -1581,8 +1592,8 @@
       });
       linhas.push('');
     });
-    baixarCsv('registro-manual-' + rotuloMes(state.manMesRef)
-      .toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.csv', linhas);
+    baixarCsv('registro-manual-' + rotuloMes(ref).toLowerCase().replace(/[^a-z0-9]+/g, '-') +
+      '.csv', linhas);
   }
 
   function bind() {
