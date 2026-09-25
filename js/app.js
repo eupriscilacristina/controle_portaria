@@ -9,7 +9,6 @@
     pessoas: [],
     demo: true,
     sessao: null,
-    perfil: 'portaria',
     editPessoaId: null,
     saidaBusca: '',
     filtros: { q: '', data: '', status: 'todos' },
@@ -1377,25 +1376,13 @@
   }
 
   function abrirSessaoCloud(user) {
-    state.sessao = { uid: user.uid };
-    state.perfil = 'portaria';
-    aplicarPermissoes();
-    fs.collection('administradores').doc(user.uid).get().then(function (snapshot) {
-      if (!state.sessao || state.sessao.uid !== user.uid) return;
-      state.perfil = snapshot.exists ? 'admin' : 'portaria';
-      aplicarPermissoes();
-      abrirApp();
-    }).catch(function (error) {
-      console.error(error);
-      if (state.sessao && state.sessao.uid === user.uid) abrirApp();
-    });
+    state.sessao = { email: user.email || '' };
+    abrirApp();
   }
 
   function entrarLocal() {
     if (useCloud) return;
-    state.sessao = { modo: 'local' };
-    state.perfil = 'admin';
-    aplicarPermissoes();
+    state.sessao = { email: 'local' };
     abrirApp();
   }
 
@@ -1419,10 +1406,8 @@
     pararDados();
     if (useCloud && fs) fs.clearPersistence().catch(function () {});
     state.sessao = null;
-    state.perfil = 'portaria';
     state.acessos = [];
     state.pessoas = [];
-    aplicarPermissoes();
     renderAll();
     $('#loginScreen').hidden = false;
     $('#btnSair').hidden = true;
@@ -1438,7 +1423,6 @@
     $('#btnSair').hidden = false;
     $('#loginSenha').value = '';
     $('#loginErro').textContent = '';
-    aplicarPermissoes();
     $$('.nav-btn').forEach(function (b) { b.hidden = false; });
     iniciarDados();
     setMovimento('entrada');
@@ -1471,7 +1455,6 @@
     bind();
     setMovimento('entrada');
     setTipo('veiculo');
-    aplicarPermissoes();
     $('#loginScreen').hidden = false;
     $('#loginLocal').hidden = !state.demo;
     $('#loginEmail').focus();

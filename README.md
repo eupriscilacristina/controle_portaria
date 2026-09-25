@@ -4,8 +4,7 @@ Sistema de controle de entrada e saída de veículos e pessoas, desenvolvido com
 
 ## Recursos
 
-- Menu manual de entrada e saída com seleção de registros ativos
-- Perfis Admin e Portaria aplicados também nas regras do Firestore
+- Registro de entrada e saída com data e hora automáticas
 - Cadastro de pessoas com CPF, RG ou CNH
 - Tela de pessoas dentro do local
 - Espelho semanal com filtros e exportação CSV
@@ -54,19 +53,14 @@ O código de acesso do aplicativo não deve ser mantido no JavaScript. A valida�
 
 ### 4. Publicar as regras protegidas
 
-O arquivo `firestore.rules` exige uma sessão autenticada e separa os perfis:
-
-- **Portaria:** registra entradas, registra saídas e consulta os dados.
-- **Admin:** também cadastra, edita, importa e exclui pessoas e registros.
+O arquivo `firestore.rules` permite leitura e escrita somente para uma sessão autenticada:
 
 ```bash
 firebase login
 firebase deploy --only firestore:rules
 ```
 
-Todo usuário sem perfil explícito é tratado como **Portaria**. Para tornar uma conta **Admin**, copie o UID da conta em **Authentication → Users** e crie no Firestore um documento em `administradores` usando exatamente esse UID. O documento pode conter apenas o nome do responsável. As regras impedem que os próprios usuários criem ou alterem esse perfil.
-
-O primeiro Admin precisa ser cadastrado pelo Console do Firebase ou por uma ferramenta administrativa externa. Depois da publicação das regras, o aplicativo reconhece o perfil no próximo login.
+Todos os usuários cadastrados no Authentication devem ser considerados confiáveis. Para permissões diferentes por função, use Firebase custom claims e valide essas permissões também nas regras do Firestore.
 
 ### 5. Configurar o aplicativo Web
 
@@ -107,11 +101,11 @@ var BASE_PLANILHA = [
 var BASE_OBRAS = ["Obra A", "Obra B"];
 ```
 
-O arquivo é ignorado pelo Git e pelo Firebase Hosting. O botão de importação só aparece para o perfil Admin quando a base existe e a aplicação está usando a nuvem.
+O arquivo é ignorado pelo Git e pelo Firebase Hosting. O botão de importação só aparece quando a base existe, o Firebase está autenticado e a aplicação está usando a nuvem.
 
 ## Dados e privacidade
 
 - Nenhuma planilha ou lista de trabalhadores é distribuída pelo repositório.
 - A base local e os arquivos `*.xlsx` permanecem apenas na máquina de desenvolvimento.
 - O modo local não oferece proteção para dados reais, pois usa o armazenamento do navegador.
-- Antes de usar em produção, revise as regras, crie usuários individuais e faça backup dos dados necessários.
+- Antes de usar em produção, revise as regras, cree usuários individuais e faça backup dos dados necessários.
