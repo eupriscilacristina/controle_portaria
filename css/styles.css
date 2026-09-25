@@ -1163,6 +1163,30 @@ table.espelho {
   white-space: normal;
 }
 
+/* Nome, Funcao e Empresa com aparencia identica (celula e campo) */
+.espelho td.pessoa,
+.espelho td.sub {
+  color: #334155;
+  font-weight: 600;
+  font-size: 12.5px;
+  line-height: 1.3;
+}
+
+.espelho td.pessoa .celula-input,
+.espelho td.sub .celula-input,
+.espelho td.pessoa .celula-input.c-nome,
+.espelho td.sub .celula-input.c-funcao,
+.espelho td.sub .celula-input.c-empresa {
+  color: #334155;
+  -webkit-text-fill-color: #334155;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: normal;
+  opacity: 1;
+  background: transparent;
+}
+
 .espelho td.hora {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
@@ -1857,4 +1881,19 @@ table.espelho {
   color: #334155;
   -webkit-text-fill-color: #334155;
   font-weight: 500;
+}
+
+/* preserva o destaque das linhas especiais depois da unificacao */
+.espelho tbody tr:hover td.pessoa,
+.espelho tbody tr:hover td.sub {
+  background: #faf5f0;
+}
+
+.espelho .nova-linha td.pessoa,
+.espelho .nova-linha td.sub {
+  background: #f8fafc;
+}
+
+.espelho .grupo-empresa td.pessoa {
+  background: #e8eef6;
 }
