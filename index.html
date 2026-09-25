@@ -171,78 +171,19 @@
           <h2>Registro manual</h2>
           <p id="manContagem">0 registros</p>
         </div>
-      </div>
-
-      <div class="card">
-        <form id="formManual" class="form-grid" autocomplete="off">
-          <div class="field">
-            <label for="manTipo">Movimento *</label>
-            <select id="manTipo">
-              <option value="entrada">Entrada</option>
-              <option value="saida">Saída</option>
-            </select>
+        <div class="cal-top cal-top-inline">
+          <div class="field cal-field">
+            <label>Semana</label>
+            <strong id="manSemanaLabel">—</strong>
           </div>
-          <div class="field">
-            <label for="manData">Data *</label>
-            <input id="manData" type="date" required>
-          </div>
-          <div class="field">
-            <label for="manHora" id="manHoraLabel">Hora da entrada *</label>
-            <input id="manHora" type="time" required>
-          </div>
-          <div class="field">
-            <label for="manNome">Nome completo *</label>
-            <input id="manNome" maxlength="120" required>
-          </div>
-          <div class="field">
-            <label for="manEmpresa">Empresa</label>
-            <input id="manEmpresa" maxlength="120">
-          </div>
-          <div class="field">
-            <label for="manFuncao">Função</label>
-            <input id="manFuncao" maxlength="80">
-          </div>
-          <div class="field">
-            <label for="manTipoPessoa">Tipo</label>
-            <select id="manTipoPessoa">
-              <option value="pessoa">Pessoa</option>
-              <option value="veiculo">Veículo</option>
-            </select>
-          </div>
-          <div class="field man-veiculo" hidden>
-            <label for="manVeiculo">Veículo</label>
-            <select id="manVeiculo">
-              <option>Carro</option>
-              <option>Moto</option>
-              <option>Caminhonete</option>
-              <option>Caminhão</option>
-              <option>Van</option>
-              <option>Outro</option>
-            </select>
-          </div>
-          <div class="field man-veiculo" hidden>
-            <label for="manPlaca">Placa</label>
-            <input id="manPlaca" maxlength="8">
-          </div>
-          <div class="field full form-actions">
-            <button type="submit" class="btn primary lg" id="btnManualAdd">Adicionar registro</button>
-            <button type="button" class="btn ghost lg" id="btnManualCancelar" hidden>Cancelar edição</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="cal-top">
-        <div class="field cal-field">
-          <label>Semana</label>
-          <strong id="manSemanaLabel">—</strong>
+          <button type="button" class="btn ghost sm" id="manSemanaAnterior">Semana anterior</button>
+          <button type="button" class="btn sm semana-hoje" id="manSemanaAtual">Semana atual</button>
+          <button type="button" class="btn ghost sm" id="manSemanaProxima">Próxima semana →</button>
+          <button type="button" class="btn ghost sm" id="btnManExportar">Exportar CSV</button>
         </div>
-        <button type="button" class="btn ghost sm" id="manSemanaAnterior">Semana anterior</button>
-        <button type="button" class="btn sm semana-hoje" id="manSemanaAtual">Semana atual</button>
-        <button type="button" class="btn ghost sm" id="manSemanaProxima">Próxima semana →</button>
-        <button type="button" class="btn ghost sm" id="btnManExportar">Exportar CSV</button>
       </div>
 
-      <p class="movement-help">Clique numa célula para digitar a hora. Use a coluna S para registrar a saída.</p>
+      <p class="movement-help">Clique em qualquer célula para editar. Use <strong>E</strong> para entrada e <strong>S</strong> para saída. Para incluir alguém novo, preencha a última linha da tabela.</p>
 
       <div class="espelho-wrap">
         <table class="espelho" id="tabelaManual"></table>
@@ -455,6 +396,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="js/firebase-config.js?v=4"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=40?v=6"></script>
+  <script defer src="js/app.js?v=41?v=6"></script>
 </body>
 </html>

@@ -1290,17 +1290,6 @@ table.espelho {
   white-space: nowrap;
 }
 
-.espelho td.hora .hora-btn {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  font-weight: 700;
-  color: inherit;
-  cursor: pointer;
-  padding: 0;
-  border-radius: 4px;
-}
 
 .espelho td.hora .hora-btn:hover {
   text-decoration: underline;
@@ -1338,4 +1327,121 @@ table.espelho {
   border-color: var(--brand);
   background: #fff;
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cal-top-inline {
+  margin: 0;
+}
+
+.espelho td.hora {
+  padding: 2px 3px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.espelho td.hora.vazio {
+  background: #f8fafc;
+}
+
+.espelho td.hora.e {
+  background: #f2fbf5;
+}
+
+.espelho td.hora.s {
+  background: #fff8f2;
+}
+
+.celula-input {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  padding: 4px 6px;
+  min-width: 0;
+}
+
+.celula-input:hover {
+  border-color: rgba(17, 18, 20, 0.2);
+  background: #fff;
+}
+
+.celula-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.07);
+}
+
+.celula-input.c-nome {
+  font-weight: 700;
+  min-width: 150px;
+}
+
+.celula-input.c-funcao,
+.celula-input.c-empresa {
+  color: #475569;
+  min-width: 110px;
+}
+
+.espelho td.hora .hora-input {
+  font-weight: 700;
+  padding: 4px 2px;
+  text-align: center;
+}
+
+.espelho td.hora.s .hora-input {
+  color: var(--orange-dark);
+}
+
+.espelho td.hora.e .hora-input {
+  color: var(--green, #15803d);
+}
+
+.nova-linha td {
+  border-top: 2px solid var(--brand);
+  background: #f8fafc;
+}
+
+.nova-linha .celula-input {
+  font-weight: 400;
+  border: 1px dashed rgba(17, 18, 20, 0.25);
+  background: #fff;
+}
+
+.espelho tfoot td {
+  background: #f8fafc;
+  border-top: 1px solid var(--line);
+}
+
+.nova-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.nova-row input[type="date"],
+.nova-row input[type="time"] {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+  background: #fff;
+}
+
+.movement-help {
+  color: #64748b;
+  font-size: 13px;
+  margin: 0 0 8px;
 }

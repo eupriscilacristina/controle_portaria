@@ -12,7 +12,6 @@
     filtros: { q: '', data: '', status: 'todos' },
     semanaRef: new Date(),
     semanaFiltros: { q: '', empresa: '', obra: '' },
-    manualEditId: null,
     manSemanaRef: new Date()
   };
 
@@ -1196,13 +1195,15 @@
       if (!k) return;
       if (!mapa[k]) {
         mapa[k] = {
-          id: a.id, nome: a.nome, funcao: a.funcao || '', empresa: a.empresa || '',
+          chave: k, nome: a.nome, funcao: a.funcao || '', empresa: a.empresa || '',
           placa: a.placa || '', veiculo: a.veiculo || '', tipo: a.tipo || 'pessoa',
+          ids: [],
           dias: dias.map(function () { return { e: null, s: null }; })
         };
         ordem.push(k);
       }
       var row = mapa[k];
+      row.ids.push(a.id);
       if (a.funcao && !row.funcao) row.funcao = a.funcao;
       if (a.placa && !row.placa) row.placa = a.placa;
 
@@ -1241,76 +1242,20 @@
 
     state.manRowMap = mapa;
 
-    return ordem.map(function (k) {
-      mapa[k].chave = k;
-      return mapa[k];
-    });
+    return ordem.map(function (k) { return mapa[k]; });
   }
 
-  function manCelula(mov, movId, chave, diaIso) {
-    if (movId === 'e') {
-      if (!mov) return '<td class="hora vazio">—</td>';
-      return '<td class="hora e">' +
-        '<button type="button" class="hora-btn" data-man-editar="' + esc(mov.id) + '" ' +
-        'data-man-mov="e" title="Clique para editar">' + esc(mov.hora) + '</button></td>';
-    }
-    return '<td class="hora s' + (mov ? '' : ' vazio') + '">' +
-      '<input type="time" class="hora-input" value="' + esc(mov ? mov.hora : '') + '" ' +
-      'data-man-chave="' + esc(chave) + '" data-man-dia="' + esc(diaIso) + '" ' +
-      (mov ? 'data-man-id="' + esc(mov.id) + '" ' : '') +
-      'aria-label="Hora da saída"></td>';
+  function manInput(campo, valor, extra) {
+    return '<input type="text" class="celula-input c-' + campo + '" value="' + esc(valor || '') + '"' +
+      (extra || '') + '>';
   }
 
-  function salvarCelulaManual(input) {
-    var chave = input.getAttribute('data-man-chave');
-    var diaIso = input.getAttribute('data-man-dia');
-    var id = input.getAttribute('data-man-id');
-    var hora = input.value;
-
-    if (!hora) {
-      if (id && confirm('Apagar a saída deste dia?')) {
-        docDelete('acessos', id).then(function () {
-          if (state.manualEditId === id) limparFormManual();
-          toast('Saída removida');
-        }).catch(function (err) {
-          console.error(err);
-          toast('Erro ao remover saída', 'erro');
-        });
-      } else if (id) {
-        renderManual();
-      }
-      return;
-    }
-
-    var dt = new Date(diaIso + 'T' + hora + ':00');
-    if (isNaN(dt)) { renderManual(); return; }
-
-    var row = (state.manRowMap || {})[chave];
-    var base = {
-      origem: 'manual',
-      tipoManual: 'saida',
-      dataMovimento: dt.toISOString(),
-      dataSaida: dt.toISOString(),
-      status: 'fora'
-    };
-    if (row) {
-      base.nome = row.nome;
-      base.empresa = row.empresa || null;
-      base.funcao = row.funcao || null;
-      base.tipo = row.tipo || 'pessoa';
-      base.veiculo = row.veiculo || null;
-      base.placa = row.placa || null;
-    }
-
-    var acao = id
-      ? docUpdate('acessos', id, base).then(function () { toast('Saída atualizada'); })
-      : docAdd('acessos', base).then(function () { toast('Saída registrada'); });
-
-    acao.catch(function (err) {
-      console.error(err);
-      toast('Erro ao salvar a saída', 'erro');
-      renderManual();
-    });
+  function manInputData(dias, mov, chave, diaIso) {
+    var val = mov ? mov.hora : '';
+    var attrs = ' data-man-chave="' + esc(chave) + '" data-man-dia="' + esc(diaIso) + '"' +
+      ' data-man-mov="' + mov + '" aria-label="Hora"';
+    if (mov && mov.id) attrs += ' data-man-id="' + esc(mov.id) + '"';
+    return '<input type="time" class="celula-input hora-input ' + mov + '" value="' + esc(val) + '"' + attrs + '>';
   }
 
   function renderManual() {
@@ -1340,166 +1285,196 @@
       head1 += '<th colspan="2">' + DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] +
         ' ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '</th>';
     });
-    head1 += '<th rowspan="2">Ações</th></tr>';
+    if (ehAdmin()) head1 += '<th rowspan="2">Excluir</th>';
+    head1 += '</tr>';
     var head2 = '<tr>';
     dias.forEach(function () {
       head2 += '<th>E</th><th>S</th>';
     });
     head2 += '</tr>';
 
+    var cols = 3 + 14 + (ehAdmin() ? 1 : 0);
     var corpo = '';
     var ultimaEmpresa = null;
     linhas.forEach(function (r) {
       if (r.empresa && r.empresa !== ultimaEmpresa) {
         ultimaEmpresa = r.empresa;
-        corpo += '<tr class="grupo-empresa"><td class="pessoa" colspan="' + (3 + 14) + '">' +
+        corpo += '<tr class="grupo-empresa"><td class="pessoa" colspan="' + cols + '">' +
           esc(r.empresa) + '</td></tr>';
       }
+      var who = ' data-man-chave="' + esc(r.chave) + '"';
       corpo += '<tr>' +
-        '<td class="pessoa">' + esc(r.nome) + '</td>' +
-        '<td class="sub">' + esc(r.funcao) + '</td>' +
-        '<td class="sub">' + esc(r.empresa) + '</td>';
+        '<td class="pessoa">' + manInput('nome', r.nome, who) + '</td>' +
+        '<td class="sub">' + manInput('funcao', r.funcao, who) + '</td>' +
+        '<td class="sub">' + manInput('empresa', r.empresa, who) + '</td>';
       r.dias.forEach(function (d, i) {
-        corpo += manCelula(d.e, 'e', r.chave, isoDate(dias[i])) +
-          manCelula(d.s, 's', r.chave, isoDate(dias[i]));
+        var diaIso = isoDate(dias[i]);
+        corpo += '<td class="hora e' + (d.e ? '' : ' vazio') + '">' + manInputData(dias, 'e', r.chave, diaIso) + '</td>' +
+          '<td class="hora s' + (d.s ? '' : ' vazio') + '">' + manInputData(dias, 's', r.chave, diaIso) + '</td>';
       });
-      var alvoE = r.dias.reduce(function (acc, d) { return acc || d.e; }, null);
-      var alvoS = r.dias.reduce(function (acc, d) { return acc || d.s; }, null);
-      var alvo = alvoE || alvoS;
-      var botoes = '';
-      if (alvoE) {
-        botoes += '<button type="button" class="btn ghost sm" data-man-editar="' + esc(alvoE.id) + '" ' +
-          'data-man-mov="e">Editar entrada</button> ';
+      if (ehAdmin()) {
+        corpo += '<td class="nowrap"><button type="button" class="btn danger sm" data-man-excluir-linha="' +
+          esc(r.chave) + '">Excluir</button></td>';
       }
-      if (alvoS) {
-        botoes += '<button type="button" class="btn ghost sm" data-man-editar="' + esc(alvoS.id) + '" ' +
-          'data-man-mov="s">Editar saída</button> ';
-      }
-      if (ehAdmin() && alvo) {
-        botoes += '<button type="button" class="btn danger sm" data-man-excluir="' + esc(alvo.id) + '">Excluir</button>';
-      }
-      corpo += '<td class="nowrap">' + (botoes || '—') + '</td></tr>';
+      corpo += '</tr>';
     });
 
     if (!linhas.length) {
-      corpo = '<tr><td colspan="18" style="padding:28px;color:#64748b">' +
-        'Nenhum registro manual nesta semana.</td></tr>';
+      corpo = '<tr><td colspan="' + cols + '" style="padding:28px;color:#64748b">' +
+        'Nenhum registro manual nesta semana. Use a linha abaixo para incluir alguém.</td></tr>';
     }
 
-    tabela.innerHTML = '<thead>' + head1 + head2 + '</thead><tbody>' + corpo + '</tbody>';
+    corpo += '<tr class="nova-linha">' +
+      '<td class="pessoa">' + manInput('novoNome', '', ' id="manNovoNome" placeholder="Nova pessoa"') + '</td>' +
+      '<td class="sub">' + manInput('novoFuncao', '', ' id="manNovoFuncao" placeholder="Função"') + '</td>' +
+      '<td class="sub">' + manInput('novoEmpresa', '', ' id="manNovoEmpresa" placeholder="Empresa"') + '</td>' +
+      dias.map(function () { return '<td class="hora vazio">—</td><td class="hora vazio">—</td>'; }).join('') +
+      (ehAdmin() ? '<td class="nowrap">—</td>' : '') +
+      '</tr>';
+
+    tabela.innerHTML = '<thead>' + head1 + head2 + '</thead><tbody>' + corpo +
+      '<tfoot><tr><td class="pessoa" colspan="' + cols + '">' +
+      '<div class="nova-row">' +
+      '<input type="date" id="manNovaData" aria-label="Data">' +
+      '<input type="time" id="manNovaHora" aria-label="Hora">' +
+      '<button type="button" class="btn primary sm" id="btnManNova">Adicionar entrada</button>' +
+      '<button type="button" class="btn ghost sm" id="btnManNovaLimpar">Limpar</button>' +
+      '</div></td></tr></tfoot></tbody>';
   }
 
-  function setManMovimento() {
-    var saida = $('#manTipo') && $('#manTipo').value === 'saida';
-    var lbl = $('#manHoraLabel');
-    if (lbl) lbl.textContent = saida ? 'Hora da saída *' : 'Hora da entrada *';
-    var add = $('#btnManualAdd');
-    if (add && !state.manualEditId) add.textContent = saida ? 'Registrar saída' : 'Registrar entrada';
+  function manRow(chave) {
+    return (state.manRowMap || {})[chave] || null;
   }
 
-  function setManTipoPessoa() {
-    var v = $('#manTipoPessoa') ? $('#manTipoPessoa').value : 'pessoa';
-    $$('.man-veiculo').forEach(function (f) { f.hidden = v !== 'veiculo'; });
-  }
+  function salvarTextoManual(input) {
+    var chave = input.getAttribute('data-man-chave');
+    var campo = input.className.match(/c-(nome|empresa|funcao)/);
+    if (!chave || !campo) return;
+    var row = manRow(chave);
+    if (!row) return;
+    var valor = input.value.trim();
+    var patch = {};
+    patch[campo[1]] = valor || null;
+    if (campo[1] === 'nome' && !valor) { renderManual(); return; }
 
-  function limparFormManual() {
-    state.manualEditId = null;
-    var f = $('#formManual');
-    if (f) f.reset();
-    var now = new Date();
-    if ($('#manData')) $('#manData').value = isoDate(now);
-    if ($('#manHora')) $('#manHora').value = pad(now.getHours()) + ':' + pad(now.getMinutes());
-    if ($('#manTipoPessoa')) $('#manTipoPessoa').value = 'pessoa';
-    if ($('#btnManualCancelar')) $('#btnManualCancelar').hidden = true;
-    setManTipoPessoa();
-    setManMovimento();
-  }
-
-  function salvarManual(ev) {
-    ev.preventDefault();
-    var tipo = $('#manTipo').value === 'saida' ? 'saida' : 'entrada';
-    var nome = $('#manNome').value.trim();
-    var data = $('#manData').value;
-    var hora = $('#manHora').value;
-
-    if (!nome) { toast('Informe o nome completo', 'erro'); $('#manNome').focus(); return; }
-    if (!data) { toast('Informe a data', 'erro'); $('#manData').focus(); return; }
-    if (!hora) { toast('Informe a hora', 'erro'); $('#manHora').focus(); return; }
-
-    var dt = new Date(data + 'T' + hora + ':00');
-    if (isNaN(dt)) { toast('Data / hora inválidas', 'erro'); return; }
-
-    var tipoPessoa = $('#manTipoPessoa').value;
-    var registro = {
-      origem: 'manual',
-      tipoManual: tipo,
-      tipo: tipoPessoa,
-      nome: nome,
-      empresa: $('#manEmpresa').value.trim() || null,
-      funcao: $('#manFuncao').value.trim() || null,
-      veiculo: tipoPessoa === 'veiculo' ? $('#manVeiculo').value : null,
-      placa: tipoPessoa === 'veiculo' ? ($('#manPlaca').value.trim().toUpperCase() || null) : null,
-      dataMovimento: dt.toISOString()
-    };
-    if (tipo === 'entrada') {
-      registro.dataEntrada = registro.dataMovimento;
-      registro.dataSaida = null;
-      registro.status = 'dentro';
-    } else {
-      registro.dataSaida = registro.dataMovimento;
-      registro.status = 'fora';
-    }
-
-    var acao = state.manualEditId
-      ? docUpdate('acessos', state.manualEditId, registro).then(function () {
-          toast('Registro manual atualizado');
-        })
-      : docAdd('acessos', registro).then(function () {
-          toast(tipo === 'entrada' ? 'Entrada registrada' : 'Saída registrada');
-        });
-
-    acao.catch(function (e) {
-      console.error(e);
-      toast('Erro ao salvar. Verifique o Firebase.', 'erro');
-    }).finally(function () {
-      limparFormManual();
+    Promise.all(row.ids.map(function (id) {
+      return docUpdate('acessos', id, patch);
+    })).then(function () {
+      if (campo[1] === 'nome') toast('Nome atualizado');
+    }).catch(function (err) {
+      console.error(err);
+      toast('Erro ao salvar', 'erro');
+      renderManual();
     });
   }
 
-  function editarManual(id, mov) {
-    var a = manItens().find(function (x) { return x.id === id; });
-    if (!a) return;
-    state.manualEditId = id;
-    var tipo = mov || a.tipoManual || (a.dataSaida && !a.dataEntrada ? 'saida' : 'entrada');
-    if (tipo !== 'entrada' && tipo !== 'saida') tipo = 'entrada';
-    var d = toDate(tipo === 'saida' ? (a.dataSaida || a.dataMovimento) : (a.dataEntrada || a.dataMovimento)) || new Date();
-    if ($('#manTipo')) $('#manTipo').value = tipo;
-    if ($('#manData')) $('#manData').value = isoDate(d);
-    if ($('#manHora')) $('#manHora').value = pad(d.getHours()) + ':' + pad(d.getMinutes());
-    if ($('#manNome')) $('#manNome').value = a.nome || '';
-    if ($('#manEmpresa')) $('#manEmpresa').value = a.empresa || '';
-    if ($('#manFuncao')) $('#manFuncao').value = a.funcao || '';
-    if ($('#manTipoPessoa')) $('#manTipoPessoa').value = a.tipo || 'pessoa';
-    if ($('#manVeiculo')) $('#manVeiculo').value = a.veiculo || 'Carro';
-    if ($('#manPlaca')) $('#manPlaca').value = a.placa || '';
-    if ($('#btnManualAdd')) $('#btnManualAdd').textContent = 'Salvar alterações';
-    if ($('#btnManualCancelar')) $('#btnManualCancelar').hidden = false;
-    setManTipoPessoa();
-    setManMovimento();
-    if ($('#btnManualAdd')) $('#btnManualAdd').textContent = 'Salvar alterações';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    var h = $('#manHora');
-    if (h) { h.focus(); if (h.select) h.select(); }
+  function salvarHoraManual(input) {
+    var chave = input.getAttribute('data-man-chave');
+    var diaIso = input.getAttribute('data-man-dia');
+    var mov = input.getAttribute('data-man-mov');
+    var id = input.getAttribute('data-man-id');
+    var hora = input.value;
+
+    if (!hora) {
+      if (!id) { renderManual(); return; }
+      if (!confirm('Apagar este horário?')) { renderManual(); return; }
+      docDelete('acessos', id).then(function () {
+        toast('Horário removido');
+      }).catch(function (err) {
+        console.error(err);
+        toast('Erro ao remover', 'erro');
+        renderManual();
+      });
+      return;
+    }
+
+    var dt = new Date(diaIso + 'T' + hora + ':00');
+    if (isNaN(dt)) { renderManual(); return; }
+    var iso = dt.toISOString();
+    var row = manRow(chave);
+
+    var base = { origem: 'manual', dataMovimento: iso };
+    if (mov === 'e') {
+      base.tipoManual = 'entrada';
+      base.dataEntrada = iso;
+      base.dataSaida = null;
+      base.status = 'dentro';
+    } else {
+      base.tipoManual = 'saida';
+      base.dataSaida = iso;
+      base.status = 'fora';
+    }
+    if (row) {
+      base.nome = row.nome;
+      base.empresa = row.empresa || null;
+      base.funcao = row.funcao || null;
+      base.tipo = row.tipo || 'pessoa';
+      base.veiculo = row.veiculo || null;
+      base.placa = row.placa || null;
+    }
+
+    var acao = id
+      ? docUpdate('acessos', id, base).then(function () { toast('Horário atualizado'); })
+      : docAdd('acessos', base).then(function () { toast('Horário registrado'); });
+
+    acao.catch(function (err) {
+      console.error(err);
+      toast('Erro ao salvar o horário', 'erro');
+      renderManual();
+    });
+  }
+
+  function adicionarNovaPessoa() {
+    var nome = $('#manNovoNome') ? $('#manNovoNome').value.trim() : '';
+    var data = $('#manNovaData') ? $('#manNovaData').value : '';
+    var hora = $('#manNovaHora') ? $('#manNovaHora').value : '';
+    if (!nome) { toast('Informe o nome', 'erro'); return; }
+    if (!data || !hora) { toast('Informe data e hora', 'erro'); return; }
+    var dt = new Date(data + 'T' + hora + ':00');
+    if (isNaN(dt)) { toast('Data / hora inválidas', 'erro'); return; }
+    var iso = dt.toISOString();
+    docAdd('acessos', {
+      origem: 'manual',
+      tipoManual: 'entrada',
+      tipo: 'pessoa',
+      nome: nome,
+      empresa: ($('#manNovoEmpresa').value || '').trim() || null,
+      funcao: ($('#manNovoFuncao').value || '').trim() || null,
+      veiculo: null,
+      placa: null,
+      dataEntrada: iso,
+      dataMovimento: iso,
+      status: 'dentro'
+    }).then(function () {
+      toast('Entrada registrada');
+    }).catch(function (err) {
+      console.error(err);
+      toast('Erro ao salvar. Verifique o Firebase.', 'erro');
+    });
+  }
+
+  function excluirLinhaManual(chave) {
+    var row = manRow(chave);
+    if (!row || !row.ids.length) return;
+    if (!confirm('Excluir todos os horários de ' + row.nome + ' nesta semana?')) return;
+    Promise.all(row.ids.map(function (id) {
+      return docDelete('acessos', id);
+    })).then(function () {
+      toast('Registros excluídos');
+    }).catch(function (err) {
+      console.error(err);
+      toast('Erro ao excluir', 'erro');
+    });
   }
 
   function exportarManualCsv() {
     var dias = diasDaSemana(state.manSemanaRef);
     var head = ['Nome Completo', 'Funcao', 'Empresa'];
     dias.forEach(function (d) {
-      head.push(DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + ' ' +
-        pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' E');
-      head.push(DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + ' ' +
-        pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' S');
+      var lbl = DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + ' ' +
+        pad(d.getDate()) + '/' + pad(d.getMonth() + 1);
+      head.push(lbl + ' E');
+      head.push(lbl + ' S');
     });
     var linhas = [head.map(csvCell).join(';')];
     manLinhas().forEach(function (r) {
@@ -1609,13 +1584,6 @@
     $('#listaHistorico').addEventListener('click', onListaClick);
     $('#listaPessoasList').addEventListener('click', onListaClick);
 
-    $('#formManual').addEventListener('submit', salvarManual);
-    $('#btnManualCancelar').addEventListener('click', function () {
-      limparFormManual();
-      renderManual();
-    });
-    $('#manTipoPessoa').addEventListener('change', setManTipoPessoa);
-    $('#manTipo').addEventListener('change', setManMovimento);
     $('#btnManExportar').addEventListener('click', exportarManualCsv);
     $('#manSemanaAnterior').addEventListener('click', function () {
       state.manSemanaRef = new Date(state.manSemanaRef.getTime() - 7 * 86400000);
@@ -1630,34 +1598,24 @@
       renderManual();
     });
     $('#tabelaManual').addEventListener('change', function (e) {
-      var inp = e.target.closest('.hora-input');
-      if (inp) { salvarCelulaManual(inp); return; }
+      var hora = e.target.closest('.hora-input');
+      if (hora) { salvarHoraManual(hora); return; }
+      var txt = e.target.closest('.celula-input');
+      if (txt) { salvarTextoManual(txt); return; }
     });
     $('#tabelaManual').addEventListener('click', function (e) {
-      var ed = e.target.closest('[data-man-editar]');
-      if (ed) {
-        editarManual(ed.getAttribute('data-man-editar'), ed.getAttribute('data-man-mov'));
-        return;
-      }
-      var ex = e.target.closest('[data-man-excluir]');
+      if (e.target.closest('#btnManNova')) { adicionarNovaPessoa(); return; }
+      if (e.target.closest('#btnManNovaLimpar')) { renderManual(); return; }
+      var ex = e.target.closest('[data-man-excluir-linha]');
       if (ex) {
         if (!exigirAdmin('Somente o Admin pode excluir registros.')) return;
-        var id = ex.getAttribute('data-man-excluir');
-        if (!confirm('Excluir este registro manual?')) return;
-        docDelete('acessos', id).then(function () {
-          if (state.manualEditId === id) limparFormManual();
-          toast('Registro excluído');
-        }).catch(function (err) {
-          console.error(err);
-          toast('Erro ao excluir registro', 'erro');
-        });
+        excluirLinhaManual(ex.getAttribute('data-man-excluir-linha'));
       }
     });
 
     $('#bannerFechar').addEventListener('click', function () {
       $('#demoBanner').hidden = true;
     });
-    limparFormManual();
   }
 
   function pararDados() {
