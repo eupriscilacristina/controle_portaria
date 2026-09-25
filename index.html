@@ -169,19 +169,11 @@
       <div class="section-head">
         <div>
           <h2>Registro manual</h2>
-          <p id="manContagem">0 registros</p>
-        </div>
+          <p id="manContagem">0 registros</p>        </div>
       </div>
 
       <div class="card">
         <form id="formManual" class="form-grid" autocomplete="off">
-          <div class="field">
-            <label for="manTipo">Tipo *</label>
-            <select id="manTipo">
-              <option value="entrada">Entrada</option>
-              <option value="saida">Saída</option>
-            </select>
-          </div>
           <div class="field">
             <label for="manData">Data *</label>
             <input id="manData" type="date" required>
@@ -228,14 +220,6 @@
             <label for="manObra">Obra / Local</label>
             <input id="manObra" maxlength="120">
           </div>
-          <div class="field">
-            <label for="manAtividade">Atividade</label>
-            <input id="manAtividade" maxlength="80">
-          </div>
-          <div class="field full">
-            <label for="manObs">Observações</label>
-            <textarea id="manObs" rows="2" maxlength="240"></textarea>
-          </div>
           <div class="field full form-actions">
             <button type="submit" class="btn primary lg" id="btnManualAdd">Adicionar registro</button>
             <button type="button" class="btn ghost lg" id="btnManualCancelar" hidden>Cancelar edição</button>
@@ -245,20 +229,8 @@
 
       <div class="card filters">
         <div class="field">
-          <label for="manFiltQ">Buscar</label>
-          <input id="manFiltQ" placeholder="Nome, empresa, placa, obra...">
-        </div>
-        <div class="field">
-          <label for="manFiltData">Data</label>
-          <input id="manFiltData" type="date">
-        </div>
-        <div class="field">
-          <label for="manFiltTipo">Tipo</label>
-          <select id="manFiltTipo">
-            <option value="">Todos</option>
-            <option value="entrada">Entradas</option>
-            <option value="saida">Saídas</option>
-          </select>
+          <label for="manFiltQ">Buscar pessoa</label>
+          <input id="manFiltQ" placeholder="Nome, empresa ou placa">
         </div>
         <div class="field">
           <label>&nbsp;</label>
@@ -268,27 +240,19 @@
           </div>
         </div>
       </div>
+
+      <div class="cal-top">
+        <div class="field cal-field">
+          <label>Semana</label>
+          <strong id="manSemanaLabel">—</strong>
+        </div>
+        <button type="button" class="btn ghost sm" id="manSemanaAnterior">Semana anterior</button>
+        <button type="button" class="btn sm semana-hoje" id="manSemanaAtual">Semana atual</button>
+        <button type="button" class="btn ghost sm" id="manSemanaProxima">Próxima semana →</button>
+      </div>
+
       <div class="espelho-wrap">
-        <table class="espelho" id="tabelaManual">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Hora</th>
-              <th>Tipo</th>
-              <th>Nome</th>
-              <th>Empresa</th>
-              <th>Função</th>
-              <th>Tipo</th>
-              <th>Veículo</th>
-              <th>Placa</th>
-              <th>Obra / Local</th>
-              <th>Atividade</th>
-              <th>Observações</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="manTbody"></tbody>
-        </table>
+        <table class="espelho" id="tabelaManual"></table>
       </div>
     </section>
 
@@ -498,6 +462,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="js/firebase-config.js?v=4"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=36?v=6"></script>
+  <script defer src="js/app.js?v=37?v=6"></script>
 </body>
 </html>
