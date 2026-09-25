@@ -9,6 +9,8 @@
   --line: rgba(15, 17, 20, 0.12);
   --orange: #f97316;
   --orange-dark: #ea580c;
+  --brand: #f97316;
+  --brand-dark: #ea580c;
   --preto: #111214;
   --ok: #059669;
   --ok-bg: #e7f6f0;
@@ -1375,7 +1377,7 @@ table.espelho {
 }
 
 .celula-input.c-nome {
-  font-weight: 700;
+  font-weight: 600;
   min-width: 150px;
   color: #334155;
 }
@@ -1384,6 +1386,28 @@ table.espelho {
 .celula-input.c-empresa {
   color: #334155;
   min-width: 110px;
+}
+
+.celula-input.c-nome,
+.celula-input.c-funcao,
+.celula-input.c-empresa {
+  font-weight: 600;
+  color: #334155;
+  background: transparent;
+}
+
+.celula-input.c-nome::placeholder,
+.celula-input.c-funcao::placeholder,
+.celula-input.c-empresa::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.espelho td.pessoa .celula-input.c-nome,
+.espelho td.sub .celula-input.c-funcao,
+.espelho td.sub .celula-input.c-empresa {
+  color: #334155;
+  font-weight: 600;
 }
 
 .espelho td.hora .hora-input {
@@ -1463,6 +1487,10 @@ table.espelho {
 
 .espelho th.dia-col.hoje {
   background: var(--brand);
+  color: #fff;
+}
+
+.espelho th.dia-col.hoje b {
   color: #fff;
 }
 

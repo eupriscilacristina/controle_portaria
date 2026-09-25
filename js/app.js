@@ -1378,7 +1378,7 @@
 
   function manCabecalho(dias) {
     var head1 = '<tr>' +
-      '<th class="pessoa" rowspan="2">Nome Completo</th>' +
+      '<th class="pessoa" rowspan="2">Nome</th>' +
       '<th class="sub" rowspan="2">Função</th>' +
       '<th class="sub" rowspan="2">Empresa</th>';
     var head2 = '<tr>';
