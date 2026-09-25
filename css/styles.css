@@ -1377,11 +1377,12 @@ table.espelho {
 .celula-input.c-nome {
   font-weight: 700;
   min-width: 150px;
+  color: #334155;
 }
 
 .celula-input.c-funcao,
 .celula-input.c-empresa {
-  color: #475569;
+  color: #334155;
   min-width: 110px;
 }
 
@@ -1609,4 +1610,207 @@ table.espelho {
 
 #tabelaSemanal tbody tr:hover td.excluir-col {
   background: #f7f8fa;
+}
+
+/* =====================celular===================== */
+@media (max-width: 860px) {
+
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .section-head h2 {
+    font-size: 19px;
+  }
+
+  .cal-top-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .cal-top-inline .btn {
+    flex: 1 1 auto;
+    min-width: 118px;
+  }
+
+  .movement-help {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  /* tabelas: rolagem horizontal com a primeira coluna fixa */
+  .espelho-wrap,
+  .semana-bloco .espelho-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+  }
+
+  table.espelho {
+    min-width: 760px;
+    font-size: 12px;
+  }
+
+  .espelho th,
+  .espelho td {
+    padding: 6px 5px;
+  }
+
+  .espelho td.pessoa,
+  .espelho th.pessoa {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: #fff;
+    min-width: 132px;
+    max-width: 132px;
+    font-size: 11.5px;
+  }
+
+  .espelho thead th.pessoa {
+    z-index: 5;
+    background: var(--grad-preto);
+  }
+
+  .espelho td.sub,
+  .espelho th.sub {
+    min-width: 92px;
+    max-width: 110px;
+    font-size: 11px;
+  }
+
+  .espelho td.hora {
+    min-width: 42px;
+  }
+
+  .espelho th.dia-col {
+    min-width: 42px;
+    font-size: 10.5px;
+  }
+
+  .espelho th.dia-col b {
+    font-size: 13px;
+  }
+
+  /* celulas de hora do registro manual: alvo de toque maior */
+  .semana-bloco .espelho td.hora {
+    width: 44px;
+    min-width: 44px;
+    padding: 3px 1px;
+  }
+
+  .semana-bloco .espelho .celula-input.hora-input {
+    font-size: 11px;
+    padding: 6px 0;
+    text-align: center;
+  }
+
+  .semana-bloco .espelho .celula-input.c-nome,
+  .semana-bloco .espelho .celula-input.c-funcao,
+  .semana-bloco .espelho .celula-input.c-empresa {
+    min-width: 96px;
+    font-size: 11.5px;
+  }
+
+  #tabelaSemanal .excluir-col,
+  #tabelaSemanal th.excluir-col {
+    min-width: 64px;
+    max-width: 64px;
+    width: 64px;
+  }
+
+  #tabelaSemanal .excluir-col .btn {
+    padding: 7px 9px;
+    font-size: 10.5px;
+  }
+
+  .semana-head {
+    flex-wrap: wrap;
+    padding: 8px 11px;
+    font-size: 12px;
+  }
+
+  .semana-bloco {
+    margin-bottom: 14px;
+  }
+
+  .mes-divisor {
+    margin: 20px 0 10px;
+  }
+
+  .mes-divisor span {
+    font-size: 12.5px;
+  }
+
+  .item {
+    flex-wrap: wrap;
+  }
+
+  .item-actions .btn {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 560px) {
+
+  .bottom-nav {
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    gap: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .bottom-nav .nav-btn {
+    flex: 1 0 auto;
+    min-width: 58px;
+    padding: 7px 6px;
+    font-size: 9.5px;
+  }
+
+  .bottom-nav .nav-btn svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  table.espelho {
+    min-width: 680px;
+  }
+
+  .espelho td.pessoa,
+  .espelho th.pessoa {
+    min-width: 116px;
+    max-width: 116px;
+  }
+
+  .espelho td.sub,
+  .espelho th.sub {
+    min-width: 80px;
+    max-width: 92px;
+  }
+
+  .semana-bloco .espelho td.hora {
+    width: 40px;
+    min-width: 40px;
+  }
+
+  .cal-top-inline .btn {
+    min-width: 100%;
+  }
+
+  .btn.sm,
+  .btn.lg {
+    padding: 11px 14px;
+  }
 }

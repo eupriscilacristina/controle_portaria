@@ -404,7 +404,9 @@
     if (pb) pb.hidden = !admin;
     var nav = $('#navPessoas');
     if (nav) nav.hidden = !admin;
-    if (!admin && state.tab === 'pessoas') setTab('registrar');
+    var navHist = $('#navHistorico');
+    if (navHist) navHist.hidden = !admin;
+    if (!admin && (state.tab === 'pessoas' || state.tab === 'historico')) setTab('registrar');
   }
 
   function animarNumero(el, novo) {
@@ -862,7 +864,7 @@
   }
 
   function setTab(name) {
-    if (name === 'pessoas' && !ehAdmin()) {
+    if ((name === 'pessoas' || name === 'historico') && !ehAdmin()) {
       toast('Acesso restrito ao Admin.', 'erro');
       name = 'registrar';
     }
@@ -1857,6 +1859,8 @@
     if (r) r.hidden = true;
     var nav = $('#navPessoas');
     if (nav) nav.hidden = true;
+    var navHist = $('#navHistorico');
+    if (navHist) navHist.hidden = true;
     $$('.nav-btn').forEach(function (b) { b.hidden = true; });
     renderAll();
   }
