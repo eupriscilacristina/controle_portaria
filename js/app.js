@@ -1197,7 +1197,7 @@
       if (!mapa[k]) {
         mapa[k] = {
           id: a.id, nome: a.nome, funcao: a.funcao || '', empresa: a.empresa || '',
-          placa: a.placa || '', veiculo: a.veiculo || '',
+          placa: a.placa || '', veiculo: a.veiculo || '', tipo: a.tipo || 'pessoa',
           dias: dias.map(function () { return { e: null, s: null }; })
         };
         ordem.push(k);
@@ -1239,14 +1239,78 @@
       return (mapa[a].nome || '') < (mapa[b].nome || '') ? -1 : 1;
     });
 
-    return ordem.map(function (k) { return mapa[k]; });
+    state.manRowMap = mapa;
+
+    return ordem.map(function (k) {
+      mapa[k].chave = k;
+      return mapa[k];
+    });
   }
 
-  function manCelula(mov, movId) {
-    if (!mov) return '<td class="hora vazio">—</td>';
-    return '<td class="hora ' + movId + '">' +
-      '<button type="button" class="hora-btn" data-man-editar="' + esc(mov.id) + '" ' +
-      'data-man-mov="' + movId + '" title="Clique para editar">' + esc(mov.hora) + '</button></td>';
+  function manCelula(mov, movId, chave, diaIso) {
+    if (movId === 'e') {
+      if (!mov) return '<td class="hora vazio">—</td>';
+      return '<td class="hora e">' +
+        '<button type="button" class="hora-btn" data-man-editar="' + esc(mov.id) + '" ' +
+        'data-man-mov="e" title="Clique para editar">' + esc(mov.hora) + '</button></td>';
+    }
+    return '<td class="hora s' + (mov ? '' : ' vazio') + '">' +
+      '<input type="time" class="hora-input" value="' + esc(mov ? mov.hora : '') + '" ' +
+      'data-man-chave="' + esc(chave) + '" data-man-dia="' + esc(diaIso) + '" ' +
+      (mov ? 'data-man-id="' + esc(mov.id) + '" ' : '') +
+      'aria-label="Hora da saída"></td>';
+  }
+
+  function salvarCelulaManual(input) {
+    var chave = input.getAttribute('data-man-chave');
+    var diaIso = input.getAttribute('data-man-dia');
+    var id = input.getAttribute('data-man-id');
+    var hora = input.value;
+
+    if (!hora) {
+      if (id && confirm('Apagar a saída deste dia?')) {
+        docDelete('acessos', id).then(function () {
+          if (state.manualEditId === id) limparFormManual();
+          toast('Saída removida');
+        }).catch(function (err) {
+          console.error(err);
+          toast('Erro ao remover saída', 'erro');
+        });
+      } else if (id) {
+        renderManual();
+      }
+      return;
+    }
+
+    var dt = new Date(diaIso + 'T' + hora + ':00');
+    if (isNaN(dt)) { renderManual(); return; }
+
+    var row = (state.manRowMap || {})[chave];
+    var base = {
+      origem: 'manual',
+      tipoManual: 'saida',
+      dataMovimento: dt.toISOString(),
+      dataSaida: dt.toISOString(),
+      status: 'fora'
+    };
+    if (row) {
+      base.nome = row.nome;
+      base.empresa = row.empresa || null;
+      base.funcao = row.funcao || null;
+      base.tipo = row.tipo || 'pessoa';
+      base.veiculo = row.veiculo || null;
+      base.placa = row.placa || null;
+    }
+
+    var acao = id
+      ? docUpdate('acessos', id, base).then(function () { toast('Saída atualizada'); })
+      : docAdd('acessos', base).then(function () { toast('Saída registrada'); });
+
+    acao.catch(function (err) {
+      console.error(err);
+      toast('Erro ao salvar a saída', 'erro');
+      renderManual();
+    });
   }
 
   function renderManual() {
@@ -1295,8 +1359,9 @@
         '<td class="pessoa">' + esc(r.nome) + '</td>' +
         '<td class="sub">' + esc(r.funcao) + '</td>' +
         '<td class="sub">' + esc(r.empresa) + '</td>';
-      r.dias.forEach(function (d) {
-        corpo += manCelula(d.e, 'e') + manCelula(d.s, 's');
+      r.dias.forEach(function (d, i) {
+        corpo += manCelula(d.e, 'e', r.chave, isoDate(dias[i])) +
+          manCelula(d.s, 's', r.chave, isoDate(dias[i]));
       });
       var alvoE = r.dias.reduce(function (acc, d) { return acc || d.e; }, null);
       var alvoS = r.dias.reduce(function (acc, d) { return acc || d.s; }, null);
@@ -1563,6 +1628,10 @@
     $('#manSemanaAtual').addEventListener('click', function () {
       state.manSemanaRef = new Date();
       renderManual();
+    });
+    $('#tabelaManual').addEventListener('change', function (e) {
+      var inp = e.target.closest('.hora-input');
+      if (inp) { salvarCelulaManual(inp); return; }
     });
     $('#tabelaManual').addEventListener('click', function (e) {
       var ed = e.target.closest('[data-man-editar]');

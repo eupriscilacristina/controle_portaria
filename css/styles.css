@@ -1310,3 +1310,32 @@ table.espelho {
   outline: 2px solid var(--brand);
   outline-offset: 1px;
 }
+
+.espelho td.hora.s {
+  background: #fffaf3;
+}
+
+.espelho td.hora .hora-input {
+  width: 100%;
+  min-width: 62px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  color: var(--orange-dark);
+  padding: 3px 4px;
+  text-align: center;
+}
+
+.espelho td.hora .hora-input:hover {
+  border-color: rgba(17, 18, 20, 0.18);
+  background: #fff;
+}
+
+.espelho td.hora .hora-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+}
