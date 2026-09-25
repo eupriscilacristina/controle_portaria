@@ -1128,6 +1128,11 @@ table.espelho {
   white-space: nowrap;
 }
 
+/* fundo uniforme do corpo da tabela: a coluna Nome nao pode standout */
+.espelho tbody td {
+  background: var(--card-solid);
+}
+
 .espelho thead th {
   background: rgba(17, 18, 20, 0.04);
   color: #4a4d53;
@@ -1534,12 +1539,10 @@ table.espelho {
   font-weight: 800;
 }
 
-.espelho th.dia-col.hoje {
-  background: #f97316;
-  color: #ffffff;
-}
-
+/* o dia de hoje usa a mesma cor dos demais dias */
+.espelho th.dia-col.hoje,
 .espelho th.dia-col.hoje b {
+  background: var(--grad-preto);
   color: #ffffff;
 }
 
