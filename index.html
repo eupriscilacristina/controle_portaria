@@ -184,6 +184,133 @@
       </div>
     </section>
 
+    <section class="tab" id="tab-manual">
+      <div class="section-head">
+        <div>
+          <h2>Registro manual</h2>
+          <p id="manContagem">0 registros</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <form id="formManual" class="form-grid" autocomplete="off">
+          <div class="field">
+            <label for="manTipo">Tipo *</label>
+            <select id="manTipo">
+              <option value="entrada">Entrada</option>
+              <option value="saida">Saída</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="manData">Data *</label>
+            <input id="manData" type="date" required>
+          </div>
+          <div class="field">
+            <label for="manHora">Hora *</label>
+            <input id="manHora" type="time" required>
+          </div>
+          <div class="field">
+            <label for="manNome">Nome completo *</label>
+            <input id="manNome" maxlength="120" required>
+          </div>
+          <div class="field">
+            <label for="manEmpresa">Empresa</label>
+            <input id="manEmpresa" maxlength="120">
+          </div>
+          <div class="field">
+            <label for="manFuncao">Função</label>
+            <input id="manFuncao" maxlength="80">
+          </div>
+          <div class="field">
+            <label for="manTipoPessoa">Tipo</label>
+            <select id="manTipoPessoa">
+              <option value="pessoa">Pessoa</option>
+              <option value="veiculo">Veículo</option>
+            </select>
+          </div>
+          <div class="field man-veiculo" hidden>
+            <label for="manVeiculo">Veículo</label>
+            <select id="manVeiculo">
+              <option>Carro</option>
+              <option>Moto</option>
+              <option>Caminhonete</option>
+              <option>Caminhão</option>
+              <option>Van</option>
+              <option>Outro</option>
+            </select>
+          </div>
+          <div class="field man-veiculo" hidden>
+            <label for="manPlaca">Placa</label>
+            <input id="manPlaca" maxlength="8">
+          </div>
+          <div class="field">
+            <label for="manObra">Obra / Local</label>
+            <input id="manObra" maxlength="120">
+          </div>
+          <div class="field">
+            <label for="manAtividade">Atividade</label>
+            <input id="manAtividade" maxlength="80">
+          </div>
+          <div class="field full">
+            <label for="manObs">Observações</label>
+            <textarea id="manObs" rows="2" maxlength="240"></textarea>
+          </div>
+          <div class="field full form-actions">
+            <button type="submit" class="btn primary lg" id="btnManualAdd">Adicionar registro</button>
+            <button type="button" class="btn ghost lg" id="btnManualCancelar" hidden>Cancelar edição</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card filters">
+        <div class="field">
+          <label for="manFiltQ">Buscar</label>
+          <input id="manFiltQ" placeholder="Nome, empresa, placa, obra...">
+        </div>
+        <div class="field">
+          <label for="manFiltData">Data</label>
+          <input id="manFiltData" type="date">
+        </div>
+        <div class="field">
+          <label for="manFiltTipo">Tipo</label>
+          <select id="manFiltTipo">
+            <option value="">Todos</option>
+            <option value="entrada">Entradas</option>
+            <option value="saida">Saídas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="btn-row">
+            <button type="button" class="btn ghost sm" id="btnManLimparFiltros">Limpar filtros</button>
+            <button type="button" class="btn ghost sm" id="btnManExportar">Exportar CSV</button>
+          </div>
+        </div>
+      </div>
+      <div class="espelho-wrap">
+        <table class="espelho" id="tabelaManual">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Hora</th>
+              <th>Tipo</th>
+              <th>Nome</th>
+              <th>Empresa</th>
+              <th>Função</th>
+              <th>Tipo</th>
+              <th>Veículo</th>
+              <th>Placa</th>
+              <th>Obra / Local</th>
+              <th>Atividade</th>
+              <th>Observações</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="manTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="tab" id="tab-dentro">
       <div class="section-head">
         <div>
@@ -390,6 +517,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="js/firebase-config.js?v=4"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=33?v=6"></script>
+  <script defer src="js/app.js?v=34?v=6"></script>
 </body>
 </html>

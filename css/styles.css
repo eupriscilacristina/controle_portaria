@@ -1232,48 +1232,60 @@ table.espelho {
     transition-duration: 0.01ms !important;
   }
 }
-.manual-form .field input,
-.manual-form .field select,
-.manual-form .field textarea {
-  font-size: 14px;
-  padding: 0.55rem 0.65rem;
+/* Registro manual */
+.manual-form .full,
+.form-grid .full {
+  grid-column: 1 / -1;
 }
 
-.manual-table tbody td {
-  font-size: 0.92rem;
-  vertical-align: top;
-  white-space: normal;
-}
-
-.manual-table th,
-.manual-table td {
-  padding: 0.55rem 0.6rem;
-}
-
-.manual-table tbody tr:nth-child(odd) {
-  background: rgba(15, 23, 42, 0.03);
-}
-
-.manual-table .actions {
+.btn-row {
   display: flex;
-  gap: 0.4rem;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.manual-table .badge-entrada {
-  background: #dcfce7;
-  color: #166534;
-  padding: 0.15rem 0.45rem;
+.badge-entrada {
+  display: inline-block;
+  padding: 2px 9px;
   border-radius: 999px;
-  font-size: 0.85rem;
+  font-size: 11.5px;
   font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: var(--ok-bg);
+  color: #047857;
+  border: 1px solid rgba(5, 150, 105, 0.3);
 }
 
-.manual-table .badge-saida {
-  background: #fee2e2;
-  color: #991b1b;
-  padding: 0.15rem 0.45rem;
+.badge-saida {
+  display: inline-block;
+  padding: 2px 9px;
   border-radius: 999px;
-  font-size: 0.85rem;
+  font-size: 11.5px;
   font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: #fdecec;
+  color: #b42318;
+  border: 1px solid rgba(180, 35, 24, 0.25);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 22px 0;
+}
+
+#tabelaManual th,
+#tabelaManual td {
+  font-size: 12.5px;
+  vertical-align: top;
+}
+
+#tabelaManual td {
+  white-space: nowrap;
 }

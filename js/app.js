@@ -7,16 +7,15 @@
     tipo: 'veiculo',
     acessos: [],
     pessoas: [],
-    manual: [],
-    manualEditId: null,
-    manualFiltros: { q: '', data: '', tipo: '' },
     demo: true,
     sessao: null,
     editPessoaId: null,
     saidaBusca: '',
     filtros: { q: '', data: '', status: 'todos' },
     semanaRef: new Date(),
-    semanaFiltros: { q: '', empresa: '', obra: '' }
+    semanaFiltros: { q: '', empresa: '', obra: '' },
+    manualEditId: null,
+    manualFiltros: { q: '', data: '', tipo: '' }
   };
 
   var useCloud = false;
@@ -866,6 +865,7 @@
     renderCalendario();
     renderPessoas();
     renderSemanal();
+    renderManual();
   }
 
   function setTab(name) {
@@ -880,6 +880,7 @@
     if (name === 'semanal') renderSemanal();
     if (name === 'historico') { renderHistorico(); renderCalendario(); }
     if (name === 'pessoas') renderPessoas();
+    if (name === 'manual') renderManual();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -1209,139 +1210,191 @@
     else if (act === 'excluirPessoa') excluirPessoa(id);
   }
 
-
-  function formatarDataHoraManual(d) {
-    if (!d) return '';
+  function manDataLocal(d) {
     var dt = d instanceof Date ? d : new Date(d);
     if (isNaN(dt)) return '';
-    function z(n){ return (n<10?'0':'')+n; }
-    return z(dt.getDate())+'/'+z(dt.getMonth()+1)+'/'+dt.getFullYear()+' '+z(dt.getHours())+':'+z(dt.getMinutes());
+    function z(n) { return (n < 10 ? '0' : '') + n; }
+    return z(dt.getDate()) + '/' + z(dt.getMonth() + 1) + '/' + dt.getFullYear();
   }
-  function normalizarTexto(s){ return (s||'').toString().trim().toLowerCase(); }
-  function getManualAtivos(){
-    var base = Array.isArray(state.acessos)?state.acessos:[]; var res=[];
-    for (var i=0;i<base.length;i++){ if(base[i]&&base[i].origem==='manual') res.push(base[i]); }
-    return res;
-  }
-  function limparFormManual(){
-    state.manualEditId=null; var f=#formManual; if(f) f.reset();
-    var now=new Date(); function z(n){return (n<10?'0':'')+n;}
-    if(#manData) #manData.value = now.getFullYear()+'-'+z(now.getMonth()+1)+'-'+z(now.getDate());
-    if(#manHora) #manHora.value = z(now.getHours())+':'+z(now.getMinutes());
-    if(#manTipoMov) #manTipoMov.value='pessoa'; if(#btnManualAdd) #btnManualAdd.textContent='Adicionar registro manual'; if(#btnManualLimpar) #btnManualLimpar.hidden=true; setManualTipoMov();
-  }
-  function setManualTipoMov(){ var v=(#manTipoMov.value||'pessoa'); var g=('.grupo-man-veiculo'); for(var i=0;i<g.length;i++) g[i].hidden=(v!=='veiculo'); }
 
-
-  function formatarDataHoraManual(d) {
-    if (!d) return '';
+  function manHoraLocal(d) {
     var dt = d instanceof Date ? d : new Date(d);
     if (isNaN(dt)) return '';
-    function z(n){ return (n<10?'0':'')+n; }
-    return z(dt.getDate())+'/'+z(dt.getMonth()+1)+'/'+dt.getFullYear()+' '+z(dt.getHours())+':'+z(dt.getMinutes());
+    function z(n) { return (n < 10 ? '0' : '') + n; }
+    return z(dt.getHours()) + ':' + z(dt.getMinutes());
   }
-  function normalizarTexto(s){ return (s||'').toString().trim().toLowerCase(); }
-  function getManualAtivos(){
-    var base = Array.isArray(state.acessos)?state.acessos:[]; var res=[];
-    for (var i=0;i<base.length;i++){ if(base[i]&&base[i].origem==='manual') res.push(base[i]); }
-    return res;
-  }
-  function limparFormManual(){
-    state.manualEditId=null; var f=#formManual; if(f) f.reset();
-    var now=new Date(); function z(n){return (n<10?'0':'')+n;}
-    if(#manData) #manData.value = now.getFullYear()+'-'+z(now.getMonth()+1)+'-'+z(now.getDate());
-    if(#manHora) #manHora.value = z(now.getHours())+':'+z(now.getMinutes());
-    if(#manTipoMov) #manTipoMov.value='pessoa'; if(#btnManualAdd) #btnManualAdd.textContent='Adicionar registro manual'; if(#btnManualLimpar) #btnManualLimpar.hidden=true; setManualTipoMov();
-  }
-  function setManualTipoMov(){ var v=(#manTipoMov.value||'pessoa'); var g=('.grupo-man-veiculo'); for(var i=0;i<g.length;i++) g[i].hidden=(v!=='veiculo'); }
 
+  function manItens() {
+    return (state.acessos || []).filter(function (a) { return a.origem === 'manual'; });
+  }
 
-  function formatarDataHoraManual(d) {
-    if (!d) return '';
-    var dt = d instanceof Date ? d : new Date(d);
-    if (isNaN(dt)) return '';
-    function z(n){ return (n<10?'0':'')+n; }
-    return z(dt.getDate())+'/'+z(dt.getMonth()+1)+'/'+dt.getFullYear()+' '+z(dt.getHours())+':'+z(dt.getMinutes());
+  function manFiltrados() {
+    var f = state.manualFiltros;
+    var q = (f.q || '').trim().toLowerCase();
+    return manItens().filter(function (a) {
+      if (f.tipo && a.tipoManual !== f.tipo) return false;
+      if (f.data) {
+        var d = a.dataMovimento ? new Date(a.dataMovimento) : null;
+        if (!d || isNaN(d)) return false;
+        if (manDataLocal(d) !== f.data.split('-').reverse().join('/')) return false;
+      }
+      if (q) {
+        var hay = [a.nome, a.empresa, a.funcao, a.veiculo, a.placa, a.obra, a.atividade, a.obs]
+          .map(function (x) { return x || ''; }).join(' ').toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
   }
-  function normalizarTexto(s){ return (s||'').toString().trim().toLowerCase(); }
-  function getManualAtivos(){
-    var base = Array.isArray(state.acessos)?state.acessos:[]; var res=[];
-    for (var i=0;i<base.length;i++){ if(base[i]&&base[i].origem==='manual') res.push(base[i]); }
-    return res;
+
+  function setManTipoPessoa() {
+    var v = $('#manTipoPessoa') ? $('#manTipoPessoa').value : 'pessoa';
+    $$('.man-veiculo').forEach(function (f) { f.hidden = v !== 'veiculo'; });
   }
-  function limparFormManual(){
-    state.manualEditId=null;
-    var f=#formManual; if(f) f.reset();
-    var now=new Date(); function z(n){return (n<10?'0':'')+n;}
-    var id=#manData; if(id) id.value = now.getFullYear()+'-'+z(now.getMonth()+1)+'-'+z(now.getDate());
-    var ih=#manHora; if(ih) ih.value = z(now.getHours())+':'+z(now.getMinutes());
-    var tm=#manTipoMov; if(tm) tm.value='pessoa';
-    var ba=#btnManualAdd; if(ba) ba.textContent='Adicionar registro manual';
-    var bl=#btnManualLimpar; if(bl) bl.hidden=true;
-    setManualTipoMov();
+
+  function limparFormManual() {
+    state.manualEditId = null;
+    var f = $('#formManual');
+    if (f) f.reset();
+    var now = new Date();
+    if ($('#manData')) $('#manData').value = manDataLocal(now).split('/').reverse().join('-');
+    if ($('#manHora')) $('#manHora').value = manHoraLocal(now);
+    if ($('#manTipoPessoa')) $('#manTipoPessoa').value = 'pessoa';
+    if ($('#btnManualAdd')) $('#btnManualAdd').textContent = 'Adicionar registro';
+    if ($('#btnManualCancelar')) $('#btnManualCancelar').hidden = true;
+    setManTipoPessoa();
   }
-  function setManualTipoMov(){
-    var v=(#manTipoMov.value||'pessoa');
-    var g=('.grupo-man-veiculo');
-    for(var i=0;i<g.length;i++) g[i].hidden = (v!=='veiculo');
-  }
-  function adicionarManual(ev){
-    if(ev&&ev.preventDefault) ev.preventDefault();
-    if(!state.sessao) return;
-    var tipo = (#manTipo.value||'entrada');
-    var dataStr=#manData.value, horaStr=#manHora.value;
-    var nome=(#manNome.value||'').trim();
-    if(!dataStr||!horaStr||!nome){ toast('Preencha Data, Hora e Nome completo.'); return; }
-    var dtMov=new Date(dataStr+'T'+horaStr);
-    if(isNaN(dtMov.getTime())){ toast('Data/Hora inválidos.'); return; }
-    var base={
-      origem:'manual', tipoMovimento:tipo, status:'concluido', nome:nome,
-      empresa:(#manEmpresa.value||'').trim(), funcao:(#manFuncao.value||'').trim(),
-      tipo:(#manTipoMov.value||'pessoa'), veiculo:(#manVeiculo.value||'').trim(),
-      placa:(#manPlaca.value||'').trim().toUpperCase(), obra:(#manObra.value||'').trim(),
-      atividade:(#manAtividade.value||'').trim(), observacoes:(#manObs.value||'').trim(),
-      dataMovimento:dtMov.toISOString(), dataCriacao:new Date().toISOString()
+
+  function salvarManual(ev) {
+    ev.preventDefault();
+    var tipo = $('#manTipo').value;
+    var nome = $('#manNome').value.trim();
+    var data = $('#manData').value;
+    var hora = $('#manHora').value;
+
+    if (!nome) { toast('Informe o nome completo', 'erro'); $('#manNome').focus(); return; }
+    if (!data) { toast('Informe a data', 'erro'); $('#manData').focus(); return; }
+    if (!hora) { toast('Informe a hora', 'erro'); $('#manHora').focus(); return; }
+
+    var iso = data + 'T' + hora + ':00';
+    var dt = new Date(iso);
+    if (isNaN(dt)) { toast('Data / hora inválidas', 'erro'); return; }
+
+    var tipoPessoa = $('#manTipoPessoa').value;
+    var registro = {
+      origem: 'manual',
+      tipoManual: tipo,
+      tipo: tipoPessoa,
+      nome: nome,
+      empresa: $('#manEmpresa').value.trim() || null,
+      funcao: $('#manFuncao').value.trim() || null,
+      veiculo: tipoPessoa === 'veiculo' ? $('#manVeiculo').value : null,
+      placa: tipoPessoa === 'veiculo' ? ($('#manPlaca').value.trim().toUpperCase() || null) : null,
+      obra: $('#manObra').value.trim() || null,
+      atividade: $('#manAtividade').value.trim() || null,
+      obs: $('#manObs').value.trim() || null,
+      dataMovimento: dt.toISOString(),
+      status: tipo === 'entrada' ? 'dentro' : 'fora'
     };
-    if(tipo==='entrada') base.dataEntrada=base.dataMovimento; else base.dataSaida=base.dataMovimento;
-    if(state.manualEditId){ atualizarAcesso(state.manualEditId,base); toast('Registro manual atualizado'); }
-    else { adicionarAcesso(base); toast('Registro manual adicionado'); }
-    limparFormManual(); renderManual();
-  }
-  function manualEditar(id){
-    var lista=getManualAtivos(); var item=null;
-    for(var i=0;i<lista.length;i++){ if(lista[i]&&lista[i].id===id){ item=lista[i]; break; } }
-    if(!item) return; state.manualEditId=id;
-    if(#manTipo) #manTipo.value=item.tipoMovimento||'entrada';
-    var dt=item.dataMovimento?new Date(item.dataMovimento):(item.dataEntrada?new Date(item.dataEntrada):(item.dataSaida?new Date(item.dataSaida):new Date()));
-    function z(n){return (n<10?'0':'')+n;}
-    if(#manData) #manData.value=dt.getFullYear()+'-'+z(dt.getMonth()+1)+'-'+z(dt.getDate());
-    if(#manHora) #manHora.value=z(dt.getHours())+':'+z(dt.getMinutes());
-    if(#manNome) #manNome.value=item.nome||''; if(#manEmpresa) #manEmpresa.value=item.empresa||''; if(#manFuncao) #manFuncao.value=item.funcao||''; if(#manTipoMov) #manTipoMov.value=item.tipo||'pessoa'; if(#manVeiculo) #manVeiculo.value=item.veiculo||'Carro'; if(#manPlaca) #manPlaca.value=item.placa||''; if(#manObra) #manObra.value=item.obra||''; if(#manAtividade) #manAtividade.value=item.atividade||''; if(#manObs) #manObs.value=item.observacoes||'';
-    if(#btnManualAdd) #btnManualAdd.textContent='Salvar alterações'; if(#btnManualLimpar) #btnManualLimpar.hidden=false; setManualTipoMov(); window.scrollTo({top:0,behavior:'smooth'});
-  }
-  function manualExcluir(id){ if(!confirm('Excluir este registro manual?')) return; excluirAcesso(id); if(state.manualEditId===id) limparFormManual(); toast('Registro manual excluído'); }
-  function renderManual(){
-    var tbody=#tabelaManual; if(!tbody) return;
-    var lista=getManualAtivos().slice(); var f=state.manualFiltros||{q:'',data:'',tipo:''};
-    lista.sort(function(a,b){var da=a.dataMovimento||a.dataEntrada||a.dataSaida||'';var db=b.dataMovimento||b.dataEntrada||b.dataSaida||'';var ta=da?new Date(da).getTime():0;var tb=db?new Date(db).getTime():0; return tb-ta;});
-    var qn=normalizarTexto(f.q), fd=f.data||'', ft=f.tipo||''; var filtrados=[];
-    for(var i=0;i<lista.length;i++){ var it=lista[i]; if(ft&&(it.tipoMovimento||'')!==ft) continue; if(fd){ var dref=it.dataMovimento||it.dataEntrada||it.dataSaida||''; if(!dref) continue; var dr=new Date(dref); if(isNaN(dr)) continue; var ds=dr.getFullYear()+'-'+('0'+(dr.getMonth()+1)).slice(-2)+'-'+('0'+dr.getDate()).slice(-2); if(ds!==fd) continue; } if(qn){ var hay=[it.nome,it.empresa,it.funcao,it.tipo,it.veiculo,it.placa,it.obra,it.atividade,it.observacoes].join(' ').toLowerCase(); if(hay.indexOf(qn)===-1) continue; } filtrados.push(it); }
-    var html=''; for(var j=0;j<filtrados.length;j++){ var x=filtrados[j]; var dref2=x.dataMovimento||x.dataEntrada||x.dataSaida||''; var tipoES=(x.tipoMovimento==='saida')?'Saída':'Entrada'; var badgeCls=(x.tipoMovimento==='saida')?'badge-saida':'badge-entrada'; var tipoMovLbl=x.tipo||'-'; if(tipoMovLbl==='veiculo') tipoMovLbl='Veículo'; else if(tipoMovLbl==='pessoa') tipoMovLbl='Pessoa';
-      html+='<tr data-id="'+(x.id||'')+'"><td>'+formatarDataHoraManual(dref2)+'</td><td><span class="'+badgeCls+'">'+tipoES+'</span></td><td>'+(x.nome||'-')+'</td><td>'+(x.empresa||'-')+'</td><td>'+(x.funcao||'-')+'</td><td>'+tipoMovLbl+'</td><td>'+(x.veiculo||'-')+'</td><td>'+(x.placa||'-')+'</td><td>'+(x.obra||'-')+'</td><td>'+(x.atividade||'-')+'</td><td>'+(x.observacoes||'-')+'</td><td class="actions"><button type="button" class="btn xs ghost btn-man-editar">Editar</button><button type="button" class="btn xs danger ghost btn-man-excluir">Excluir</button></td></tr>';
-    }
-    if(!html) html='<tr><td colspan="12" style="text-align:center;color:#64748b;padding:1.25rem">Nenhum registro manual encontrado</td></tr>'; tbody.innerHTML=html;
-  }
-  function csvEscape(v){ if(v===null||v===undefined)return''; var s=v.toString(); if(s.indexOf('"')!==-1||s.indexOf(',')!==-1||s.indexOf('
-')!==-1||s.indexOf('
-')!==-1){ s='"'+s.replace(/"/g,'""')+'"'; } return s; }
-  function exportarManualCsv(){
-    var lista=getManualAtivos().slice(); var f=state.manualFiltros||{q:'',data:'',tipo:''};
-    lista.sort(function(a,b){var da=a.dataMovimento||a.dataEntrada||a.dataSaida||'';var db=b.dataMovimento||b.dataEntrada||b.dataSaida||'';var ta=da?new Date(da).getTime():0;var tb=db?new Date(db).getTime():0; return tb-ta;});
-    var qn=normalizarTexto(f.q), fd=f.data||'', ft=f.tipo||''; var linhas=[]; linhas.push(['Data/Hora','Tipo (E/S)','Nome','Empresa','Funcao','Tipo','Veiculo','Placa','Obra/Local','Atividade','Observacoes'].join(','));
-    for(var i=0;i<lista.length;i++){ var it=lista[i]; if(ft&&(it.tipoMovimento||'')!==ft) continue; if(fd){ var dref=it.dataMovimento||it.dataEntrada||it.dataSaida||''; if(!dref) continue; var dr=new Date(dref); if(isNaN(dr)) continue; var ds=dr.getFullYear()+'-'+('0'+(dr.getMonth()+1)).slice(-2)+'-'+('0'+dr.getDate()).slice(-2); if(ds!==fd) continue; } if(qn){ var hay=[it.nome,it.empresa,it.funcao,it.tipo,it.veiculo,it.placa,it.obra,it.atividade,it.observacoes].join(' ').toLowerCase(); if(hay.indexOf(qn)===-1) continue; } var d2=it.dataMovimento||it.dataEntrada||it.dataSaida||''; linhas.push([csvEscape(formatarDataHoraManual(d2)),csvEscape(it.tipoMovimento==='saida'?'Saida':'Entrada'),csvEscape(it.nome||''),csvEscape(it.empresa||''),csvEscape(it.funcao||''),csvEscape(it.tipo||''),csvEscape(it.veiculo||''),csvEscape(it.placa||''),csvEscape(it.obra||''),csvEscape(it.atividade||''),csvEscape(it.observacoes||'')].join(',')); }
-    var blob=new Blob([linhas.join('
+    if (tipo === 'entrada') registro.dataEntrada = registro.dataMovimento;
+    else registro.dataSaida = registro.dataMovimento;
 
-')],{type:'text/csv;charset=utf-8;'}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='registros-manual-'+new Date().toISOString().slice(0,10)+'.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    var acao = state.manualEditId
+      ? docUpdate('acessos', state.manualEditId, registro).then(function () {
+          toast('Registro manual atualizado');
+        })
+      : docAdd('acessos', registro).then(function () {
+          toast('Registro manual adicionado');
+        });
+
+    acao.catch(function (e) {
+      console.error(e);
+      toast('Erro ao salvar. Verifique o Firebase.', 'erro');
+    }).finally(function () {
+      limparFormManual();
+    });
+  }
+
+  function editarManual(id) {
+    var a = manItens().find(function (x) { return x.id === id; });
+    if (!a) return;
+    state.manualEditId = id;
+    var d = a.dataMovimento ? new Date(a.dataMovimento) : new Date();
+    if ($('#manTipo')) $('#manTipo').value = a.tipoManual || 'entrada';
+    if ($('#manData')) $('#manData').value = manDataLocal(d).split('/').reverse().join('-');
+    if ($('#manHora')) $('#manHora').value = manHoraLocal(d);
+    if ($('#manNome')) $('#manNome').value = a.nome || '';
+    if ($('#manEmpresa')) $('#manEmpresa').value = a.empresa || '';
+    if ($('#manFuncao')) $('#manFuncao').value = a.funcao || '';
+    if ($('#manTipoPessoa')) $('#manTipoPessoa').value = a.tipo || 'pessoa';
+    if ($('#manVeiculo')) $('#manVeiculo').value = a.veiculo || 'Carro';
+    if ($('#manPlaca')) $('#manPlaca').value = a.placa || '';
+    if ($('#manObra')) $('#manObra').value = a.obra || '';
+    if ($('#manAtividade')) $('#manAtividade').value = a.atividade || '';
+    if ($('#manObs')) $('#manObs').value = a.obs || '';
+    if ($('#btnManualAdd')) $('#btnManualAdd').textContent = 'Salvar alterações';
+    if ($('#btnManualCancelar')) $('#btnManualCancelar').hidden = false;
+    setManTipoPessoa();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function renderManual() {
+    var tb = $('#manTbody');
+    if (!tb) return;
+    var itens = manFiltrados().slice().sort(function (a, b) {
+      return new Date(b.dataMovimento || 0) - new Date(a.dataMovimento || 0);
+    });
+    var cont = $('#manContagem');
+    if (cont) cont.textContent = itens.length + (itens.length === 1 ? ' registro' : ' registros');
+
+    if (!itens.length) {
+      tb.innerHTML = '<tr><td colspan="13" class="empty">Nenhum registro manual encontrado.</td></tr>';
+      return;
+    }
+
+    tb.innerHTML = itens.map(function (a) {
+      var d = a.dataMovimento ? new Date(a.dataMovimento) : null;
+      var badge = a.tipoManual === 'saida'
+        ? '<span class="badge-saida">Saída</span>'
+        : '<span class="badge-entrada">Entrada</span>';
+      return '<tr>' +
+        '<td class="nowrap">' + esc(manDataLocal(d)) + '</td>' +
+        '<td class="nowrap">' + esc(manHoraLocal(d)) + '</td>' +
+        '<td>' + badge + '</td>' +
+        '<td>' + esc(a.nome || '—') + '</td>' +
+        '<td>' + esc(a.empresa || '—') + '</td>' +
+        '<td>' + esc(a.funcao || '—') + '</td>' +
+        '<td>' + esc(a.tipo === 'veiculo' ? 'Veículo' : 'Pessoa') + '</td>' +
+        '<td>' + esc(a.veiculo || '—') + '</td>' +
+        '<td>' + esc(a.placa || '—') + '</td>' +
+        '<td>' + esc(a.obra || '—') + '</td>' +
+        '<td>' + esc(a.atividade || '—') + '</td>' +
+        '<td>' + esc(a.obs || '—') + '</td>' +
+        '<td class="nowrap">' +
+          '<button type="button" class="btn ghost sm" data-man-editar="' + esc(a.id) + '">Editar</button> ' +
+          '<button type="button" class="btn danger sm" data-man-excluir="' + esc(a.id) + '">Excluir</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function exportarManualCsv() {
+    var itens = manFiltrados().slice().sort(function (a, b) {
+      return new Date(b.dataMovimento || 0) - new Date(a.dataMovimento || 0);
+    });
+    var head = ['Data', 'Hora', 'Tipo', 'Nome', 'Empresa', 'Funcao', 'TipoPessoa', 'Veiculo', 'Placa', 'Obra', 'Atividade', 'Observacoes'];
+    var linhas = [head.map(csvCell).join(';')];
+    itens.forEach(function (a) {
+      var d = a.dataMovimento ? new Date(a.dataMovimento) : null;
+      linhas.push([
+        manDataLocal(d), manHoraLocal(d),
+        a.tipoManual === 'saida' ? 'Saida' : 'Entrada',
+        a.nome || '', a.empresa || '', a.funcao || '',
+        a.tipo === 'veiculo' ? 'Veiculo' : 'Pessoa',
+        a.veiculo || '', a.placa || '', a.obra || '', a.atividade || '', a.obs || ''
+      ].map(csvCell).join(';'));
+    });
+    baixarCsv('registro-manual-' + new Date().toISOString().slice(0, 10) + '.csv', linhas);
   }
 
   function bind() {
@@ -1451,9 +1504,53 @@
     $('#listaHistorico').addEventListener('click', onListaClick);
     $('#listaPessoasList').addEventListener('click', onListaClick);
 
+    $('#formManual').addEventListener('submit', salvarManual);
+    $('#btnManualCancelar').addEventListener('click', function () {
+      limparFormManual();
+      renderManual();
+    });
+    $('#manTipoPessoa').addEventListener('change', setManTipoPessoa);
+    $('#manFiltQ').addEventListener('input', function () {
+      state.manualFiltros.q = this.value;
+      renderManual();
+    });
+    $('#manFiltData').addEventListener('change', function () {
+      state.manualFiltros.data = this.value;
+      renderManual();
+    });
+    $('#manFiltTipo').addEventListener('change', function () {
+      state.manualFiltros.tipo = this.value;
+      renderManual();
+    });
+    $('#btnManLimparFiltros').addEventListener('click', function () {
+      state.manualFiltros = { q: '', data: '', tipo: '' };
+      $('#manFiltQ').value = '';
+      $('#manFiltData').value = '';
+      $('#manFiltTipo').value = '';
+      renderManual();
+    });
+    $('#btnManExportar').addEventListener('click', exportarManualCsv);
+    $('#manTbody').addEventListener('click', function (e) {
+      var ed = e.target.closest('[data-man-editar]');
+      if (ed) { editarManual(ed.getAttribute('data-man-editar')); return; }
+      var ex = e.target.closest('[data-man-excluir]');
+      if (ex) {
+        var id = ex.getAttribute('data-man-excluir');
+        if (!confirm('Excluir este registro manual?')) return;
+        docDelete('acessos', id).then(function () {
+          if (state.manualEditId === id) limparFormManual();
+          toast('Registro excluído');
+        }).catch(function (err) {
+          console.error(err);
+          toast('Erro ao excluir registro', 'erro');
+        });
+      }
+    });
+
     $('#bannerFechar').addEventListener('click', function () {
       $('#demoBanner').hidden = true;
     });
+    limparFormManual();
   }
 
   function pararDados() {
@@ -1609,15 +1706,6 @@
       if (state.tab === 'dentro') renderDentro();
       if (state.movimento === 'saida') renderSaidaManual();
     }, 30000);
-    var formM = #formManual; if (formM) formM.addEventListener('submit', adicionarManual);
-    var mTipoMov = #manTipoMov; if (mTipoMov) mTipoMov.addEventListener('change', setManualTipoMov);
-    var mfQ = #manFiltQ; if (mfQ) mfQ.addEventListener('input', function(){ state.manualFiltros.q = mfQ.value||''; renderManual(); });
-    var mfD = #manFiltData; if (mfD) mfD.addEventListener('change', function(){ state.manualFiltros.data = mfD.value||''; renderManual(); });
-    var mfT = #manFiltTipo; if (mfT) mfT.addEventListener('change', function(){ state.manualFiltros.tipo = mfT.value||''; renderManual(); });
-    var btnMExp = #btnManualExport; if (btnMExp) btnMExp.addEventListener('click', exportarManualCsv);
-    var btnMLimF = #btnManualLimparFiltros; if (btnMLimF) btnMLimF.addEventListener('click', function(){ state.manualFiltros={q:'',data:'',tipo:''}; var qf=#manFiltQ; if(qf) qf.value=''; var df=#manFiltData; if(df) df.value=''; var tf=#manFiltTipo; if(tf) tf.value=''; renderManual(); });
-    var btnMLim = #btnManualLimpar; if (btnMLim) btnMLim.addEventListener('click', limparFormManual);
-    var tbM = #tabelaManual; if (tbM) tbM.addEventListener('click', function(e){ var btn=e.target.closest('button'); if(!btn) return; var tr=btn.closest('tr'); if(!tr) return; var id=tr.getAttribute('data-id'); if(!id) return; if(btn.classList.contains('btn-man-editar')) manualEditar(id); if(btn.classList.contains('btn-man-excluir')) manualExcluir(id); });
   }
 
   boot();
