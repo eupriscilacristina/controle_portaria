@@ -169,17 +169,25 @@
       <div class="section-head">
         <div>
           <h2>Registro manual</h2>
-          <p id="manContagem">0 registros</p>        </div>
+          <p id="manContagem">0 registros</p>
+        </div>
       </div>
 
       <div class="card">
         <form id="formManual" class="form-grid" autocomplete="off">
           <div class="field">
+            <label for="manTipo">Movimento *</label>
+            <select id="manTipo">
+              <option value="entrada">Entrada</option>
+              <option value="saida">Saída</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="manData">Data *</label>
             <input id="manData" type="date" required>
           </div>
           <div class="field">
-            <label for="manHora">Hora *</label>
+            <label for="manHora" id="manHoraLabel">Hora da entrada *</label>
             <input id="manHora" type="time" required>
           </div>
           <div class="field">
@@ -462,6 +470,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="js/firebase-config.js?v=4"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=37?v=6"></script>
+  <script defer src="js/app.js?v=38?v=6"></script>
 </body>
 </html>

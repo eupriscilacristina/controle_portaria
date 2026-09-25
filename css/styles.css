@@ -1289,3 +1289,24 @@ table.espelho {
 #tabelaManual td {
   white-space: nowrap;
 }
+
+.espelho td.hora .hora-btn {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 4px;
+}
+
+.espelho td.hora .hora-btn:hover {
+  text-decoration: underline;
+}
+
+.espelho td.hora .hora-btn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
