@@ -12,7 +12,8 @@
     filtros: { q: '', data: '', status: 'todos' },
     semanaRef: new Date(),
     semanaFiltros: { q: '', empresa: '', obra: '' },
-    manSemanaRef: new Date()
+    manSemanaRef: new Date(),
+    manNovo: { nome: '', funcao: '', empresa: '' }
   };
 
   var useCloud = false;
@@ -1258,6 +1259,26 @@
     return '<input type="time" class="celula-input hora-input ' + mov + '" value="' + esc(val) + '"' + attrs + '>';
   }
 
+  function manLinhaNova(dias) {
+    var n = state.manNovo;
+    var corpo = '<tr class="nova-linha">' +
+      '<td class="pessoa"><input type="text" class="celula-input c-nome" id="manNovoNome" ' +
+      'placeholder="Nova pessoa" value="' + esc(n.nome) + '"></td>' +
+      '<td class="sub"><input type="text" class="celula-input c-funcao" id="manNovoFuncao" ' +
+      'placeholder="Função" value="' + esc(n.funcao) + '"></td>' +
+      '<td class="sub"><input type="text" class="celula-input c-empresa" id="manNovoEmpresa" ' +
+      'placeholder="Empresa" value="' + esc(n.empresa) + '"></td>';
+    dias.forEach(function (d) {
+      var diaIso = isoDate(d);
+      corpo += '<td class="hora e"><input type="time" class="celula-input hora-input e" data-man-novo="e" ' +
+        'data-man-dia="' + esc(diaIso) + '" aria-label="Hora da entrada"></td>' +
+        '<td class="hora s"><input type="time" class="celula-input hora-input s" data-man-novo="s" ' +
+        'data-man-dia="' + esc(diaIso) + '" aria-label="Hora da saída"></td>';
+    });
+    if (ehAdmin()) corpo += '<td class="nowrap">—</td>';
+    return corpo + '</tr>';
+  }
+
   function renderManual() {
     var tabela = $('#tabelaManual');
     if (!tabela) return;
@@ -1320,26 +1341,12 @@
     });
 
     if (!linhas.length) {
-      corpo = '<tr><td colspan="' + cols + '" style="padding:28px;color:#64748b">' +
-        'Nenhum registro manual nesta semana. Use a linha abaixo para incluir alguém.</td></tr>';
+      corpo = '<tr><td colspan="' + cols + '" style="padding:20px;color:#64748b">' +
+        'Nenhum registro nesta semana. Digite o nome na linha acima e a hora na coluna do dia.</td></tr>';
     }
 
-    corpo += '<tr class="nova-linha">' +
-      '<td class="pessoa">' + manInput('novoNome', '', ' id="manNovoNome" placeholder="Nova pessoa"') + '</td>' +
-      '<td class="sub">' + manInput('novoFuncao', '', ' id="manNovoFuncao" placeholder="Função"') + '</td>' +
-      '<td class="sub">' + manInput('novoEmpresa', '', ' id="manNovoEmpresa" placeholder="Empresa"') + '</td>' +
-      dias.map(function () { return '<td class="hora vazio">—</td><td class="hora vazio">—</td>'; }).join('') +
-      (ehAdmin() ? '<td class="nowrap">—</td>' : '') +
-      '</tr>';
-
-    tabela.innerHTML = '<thead>' + head1 + head2 + '</thead><tbody>' + corpo +
-      '<tfoot><tr><td class="pessoa" colspan="' + cols + '">' +
-      '<div class="nova-row">' +
-      '<input type="date" id="manNovaData" aria-label="Data">' +
-      '<input type="time" id="manNovaHora" aria-label="Hora">' +
-      '<button type="button" class="btn primary sm" id="btnManNova">Adicionar entrada</button>' +
-      '<button type="button" class="btn ghost sm" id="btnManNovaLimpar">Limpar</button>' +
-      '</div></td></tr></tfoot></tbody>';
+    tabela.innerHTML = '<thead>' + head1 + head2 + '</thead><tbody>' +
+      manLinhaNova(dias) + corpo + '</tbody>';
   }
 
   function manRow(chave) {
@@ -1424,29 +1431,44 @@
     });
   }
 
-  function adicionarNovaPessoa() {
-    var nome = $('#manNovoNome') ? $('#manNovoNome').value.trim() : '';
-    var data = $('#manNovaData') ? $('#manNovaData').value : '';
-    var hora = $('#manNovaHora') ? $('#manNovaHora').value : '';
-    if (!nome) { toast('Informe o nome', 'erro'); return; }
-    if (!data || !hora) { toast('Informe data e hora', 'erro'); return; }
-    var dt = new Date(data + 'T' + hora + ':00');
-    if (isNaN(dt)) { toast('Data / hora inválidas', 'erro'); return; }
+  function registrarNovoHorario(input) {
+    var mov = input.getAttribute('data-man-novo');
+    var diaIso = input.getAttribute('data-man-dia');
+    var hora = input.value;
+    var linha = input.closest('tr');
+    var nome = linha && linha.querySelector('#manNovoNome') ? linha.querySelector('#manNovoNome').value.trim() : '';
+
+    if (!hora) { renderManual(); return; }
+    if (!nome) {
+      toast('Digite o nome na primeira linha', 'erro');
+      renderManual();
+      return;
+    }
+
+    var dt = new Date(diaIso + 'T' + hora + ':00');
+    if (isNaN(dt)) { renderManual(); return; }
     var iso = dt.toISOString();
-    docAdd('acessos', {
+
+    var doc = {
       origem: 'manual',
-      tipoManual: 'entrada',
+      tipoManual: mov === 'e' ? 'entrada' : 'saida',
       tipo: 'pessoa',
       nome: nome,
-      empresa: ($('#manNovoEmpresa').value || '').trim() || null,
-      funcao: ($('#manNovoFuncao').value || '').trim() || null,
+      empresa: (linha.querySelector('#manNovoEmpresa').value || '').trim() || null,
+      funcao: (linha.querySelector('#manNovoFuncao').value || '').trim() || null,
       veiculo: null,
       placa: null,
-      dataEntrada: iso,
       dataMovimento: iso,
-      status: 'dentro'
-    }).then(function () {
-      toast('Entrada registrada');
+      dataEntrada: mov === 'e' ? iso : null,
+      dataSaida: mov === 's' ? iso : null,
+      status: mov === 'e' ? 'dentro' : 'fora'
+    };
+
+    docAdd('acessos', doc).then(function () {
+      state.manNovo.nome = nome;
+      state.manNovo.empresa = doc.empresa || '';
+      state.manNovo.funcao = doc.funcao || '';
+      toast(mov === 'e' ? 'Entrada registrada' : 'Saída registrada');
     }).catch(function (err) {
       console.error(err);
       toast('Erro ao salvar. Verifique o Firebase.', 'erro');
@@ -1597,15 +1619,20 @@
       state.manSemanaRef = new Date();
       renderManual();
     });
+    $('#tabelaManual').addEventListener('input', function (e) {
+      if (e.target.id === 'manNovoNome') state.manNovo.nome = e.target.value;
+      if (e.target.id === 'manNovoFuncao') state.manNovo.funcao = e.target.value;
+      if (e.target.id === 'manNovoEmpresa') state.manNovo.empresa = e.target.value;
+    });
     $('#tabelaManual').addEventListener('change', function (e) {
+      var novo = e.target.closest('[data-man-novo]');
+      if (novo) { registrarNovoHorario(novo); return; }
       var hora = e.target.closest('.hora-input');
       if (hora) { salvarHoraManual(hora); return; }
       var txt = e.target.closest('.celula-input');
       if (txt) { salvarTextoManual(txt); return; }
     });
     $('#tabelaManual').addEventListener('click', function (e) {
-      if (e.target.closest('#btnManNova')) { adicionarNovaPessoa(); return; }
-      if (e.target.closest('#btnManNovaLimpar')) { renderManual(); return; }
       var ex = e.target.closest('[data-man-excluir-linha]');
       if (ex) {
         if (!exigirAdmin('Somente o Admin pode excluir registros.')) return;

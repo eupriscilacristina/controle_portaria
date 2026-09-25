@@ -1410,35 +1410,21 @@ table.espelho {
 .nova-linha td {
   border-top: 2px solid var(--brand);
   background: #f8fafc;
+  border-bottom: 2px solid var(--brand);
 }
 
 .nova-linha .celula-input {
   font-weight: 400;
-  border: 1px dashed rgba(17, 18, 20, 0.25);
+  border: 1px dashed rgba(17, 18, 20, 0.3);
   background: #fff;
 }
 
-.espelho tfoot td {
-  background: #f8fafc;
-  border-top: 1px solid var(--line);
+.nova-linha .celula-input::placeholder {
+  color: #94a3b8;
 }
 
-.nova-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-}
 
-.nova-row input[type="date"],
-.nova-row input[type="time"] {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 7px 10px;
-  font: inherit;
-  background: #fff;
-}
+
 
 .movement-help {
   color: #64748b;
