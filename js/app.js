@@ -460,7 +460,8 @@
     var meta = 'Entrada: ' + fmtDataHora(a.dataEntrada) + ' · dentro há ' + tempo;
     if (a.obs) meta += ' · ' + esc(a.obs);
     var cancelar = ehAdmin()
-      ? '<button type="button" class="btn ghost sm" data-act="cancelar" data-id="' + esc(a.id) + '">Cancelar</button>'
+      ? '<button type="button" class="btn danger sm" data-act="excluirAcesso" data-id="' + esc(a.id) +
+        '" title="Apagar este registro de acesso">Excluir</button>'
       : '';
     return '<div class="item">' +
       '<div class="item-main">' +
@@ -639,7 +640,7 @@
       if (!mapa[k]) {
         mapa[k] = {
           nome: p.nome, funcao: p.funcao || '', empresa: p.empresa || '',
-          obra: '', dias: dias.map(function () { return { e: '', s: '' }; })
+          obra: '', ids: [], dias: dias.map(function () { return { e: '', s: '' }; })
         };
       }
     });
@@ -652,13 +653,14 @@
       if (!mapa[k]) {
         mapa[k] = {
           nome: a.nome, funcao: a.funcao || '', empresa: a.empresa || '',
-          obra: a.obra || '', dias: dias.map(function () { return { e: '', s: '' }; })
+          obra: a.obra || '', ids: [], dias: dias.map(function () { return { e: '', s: '' }; })
         };
       }
       var row = mapa[k];
       if (a.obra && !row.obra) row.obra = a.obra;
       if (a.funcao && !row.funcao) row.funcao = a.funcao;
       if (te && dentroDoIntervalo(te, inicio, fim)) {
+        row.ids.push(a.id);
         for (var i = 0; i < 7; i++) {
           if (mesmoDia(te, dias[i])) {
             var hora = pad(te.getHours()) + ':' + pad(te.getMinutes());
@@ -668,6 +670,7 @@
         }
       }
       if (ts && dentroDoIntervalo(ts, inicio, fim)) {
+        row.ids.push(a.id);
         for (var j = 0; j < 7; j++) {
           if (mesmoDia(ts, dias[j])) {
             var horaS = pad(ts.getHours()) + ':' + pad(ts.getMinutes());
@@ -734,6 +737,7 @@
       head1 += '<th colspan="2">' + DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] +
         ' ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '</th>';
     });
+    if (ehAdmin()) head1 += '<th rowspan="2">Excluir</th>';
     head1 += '</tr>';
     var head2 = '<tr>';
     dias.forEach(function () {
@@ -741,12 +745,13 @@
     });
     head2 += '</tr>';
 
+    var cols = 3 + 14 + (ehAdmin() ? 1 : 0);
     var corpo = '';
     var ultimaEmpresa = null;
     linhas.forEach(function (r) {
       if (r.empresa && r.empresa !== ultimaEmpresa) {
         ultimaEmpresa = r.empresa;
-        corpo += '<tr class="grupo-empresa"><td class="pessoa" colspan="' + (3 + 14) + '">' +
+        corpo += '<tr class="grupo-empresa"><td class="pessoa" colspan="' + cols + '">' +
           esc(r.empresa) + '</td></tr>';
       }
       corpo += '<tr>' +
@@ -757,11 +762,18 @@
         corpo += '<td class="hora' + (d.e ? ' e' : ' vazio') + '">' + (d.e || '·') + '</td>';
         corpo += '<td class="hora' + (d.s ? ' s' : ' vazio') + '">' + (d.s || '·') + '</td>';
       });
+      if (ehAdmin()) {
+        corpo += '<td class="nowrap">' + (r.ids.length
+          ? '<button type="button" class="btn danger sm" data-act="excluirSemana" data-ids="' +
+            esc(r.ids.filter(function (v, i, s2) { return s2.indexOf(v) === i; }).join(',')) +
+            '" data-nome="' + esc(r.nome) + '">Excluir</button>'
+          : '—') + '</td>';
+      }
       corpo += '</tr>';
     });
 
     if (!linhas.length) {
-      corpo = '<tr><td colspan="17" style="padding:28px;color:#64748b">Nenhuma pessoa encontrada para os filtros.</td></tr>';
+      corpo = '<tr><td colspan="' + cols + '" style="padding:28px;color:#64748b">Nenhuma pessoa encontrada para os filtros.</td></tr>';
     }
 
     $('#tabelaSemanal').innerHTML =
@@ -982,6 +994,21 @@
     });
   }
 
+  function excluirVarios(idsCsv, msg) {
+    if (!exigirAdmin('Somente o Admin pode excluir registros.')) return;
+    var ids = String(idsCsv || '').split(',').filter(function (v) { return v; });
+    if (!ids.length) return;
+    if (!confirm(msg || 'Excluir ' + ids.length + ' registros?')) return;
+    Promise.all(ids.map(function (id) {
+      return docDelete('acessos', id);
+    })).then(function () {
+      toast(ids.length + ' registro(s) excluído(s)');
+    }).catch(function (e) {
+      console.error(e);
+      toast('Erro ao excluir registros', 'erro');
+    });
+  }
+
   function entradaRapida(pessoaId) {
     var p = state.pessoas.find(function (x) { return x.id === pessoaId; });
     if (!p) return;
@@ -1172,6 +1199,10 @@
     if (act === 'saida') registrarSaida(id);
     else if (act === 'cancelar') excluirAcesso(id, 'Cancelar esta entrada? O registro será apagado.');
     else if (act === 'excluirAcesso') excluirAcesso(id);
+    else if (act === 'excluirSemana') excluirVarios(
+      btn.getAttribute('data-ids'),
+      'Excluir todos os horários de ' + btn.getAttribute('data-nome') + ' nesta semana?'
+    );
     else if (act === 'entrada') entradaRapida(id);
     else if (act === 'editar') editarPessoa(id);
     else if (act === 'excluirPessoa') excluirPessoa(id);
@@ -1706,6 +1737,7 @@
     $('#listaDentro').addEventListener('click', onListaClick);
     $('#listaHistorico').addEventListener('click', onListaClick);
     $('#listaPessoasList').addEventListener('click', onListaClick);
+    $('#tabelaSemanal').addEventListener('click', onListaClick);
 
     $('#btnManExportar').addEventListener('click', exportarManualCsv);
     $('#manMesAnterior').addEventListener('click', function () {
