@@ -3,12 +3,15 @@
 
   var state = {
     tab: 'registrar',
+    movimento: 'entrada',
     tipo: 'veiculo',
     acessos: [],
     pessoas: [],
     demo: true,
     sessao: null,
+    perfil: 'portaria',
     editPessoaId: null,
+    saidaBusca: '',
     filtros: { q: '', data: '', status: 'todos' },
     semanaRef: new Date(),
     semanaFiltros: { q: '', empresa: '', obra: '' }
@@ -377,6 +380,26 @@
     }
   }
 
+  function ehAdmin() {
+    return state.perfil === 'admin';
+  }
+
+  function exigirAdmin(mensagem) {
+    if (ehAdmin()) return true;
+    toast(mensagem || 'Esta ação é exclusiva do Admin.', 'erro');
+    return false;
+  }
+
+  function aplicarPermissoes() {
+    var admin = ehAdmin();
+    var rotulo = $('#sessaoRotulo');
+    rotulo.textContent = admin ? 'Admin' : 'Portaria';
+    rotulo.classList.toggle('admin', admin);
+    rotulo.hidden = !state.sessao;
+    $('#pessoasAdmin').hidden = !admin;
+    $('#pessoasBusca').hidden = !admin;
+  }
+
   function animarNumero(el, novo) {
     novo = Number(novo) || 0;
     var atual = Number(el.textContent) || 0;
@@ -429,6 +452,9 @@
     var tempo = e ? fmtDur(Date.now() - e.getTime()) : '…';
     var meta = 'Entrada: ' + fmtDataHora(a.dataEntrada) + ' · dentro há ' + tempo;
     if (a.obs) meta += ' · ' + esc(a.obs);
+    var cancelar = ehAdmin()
+      ? '<button type="button" class="btn ghost sm" data-act="cancelar" data-id="' + esc(a.id) + '">Cancelar</button>'
+      : '';
     return '<div class="item">' +
       '<div class="item-main">' +
         '<div class="item-title">' + esc(a.nome) + '<span class="badge ok">Dentro</span></div>' +
@@ -437,7 +463,7 @@
       '</div>' +
       '<div class="item-actions">' +
         '<button type="button" class="btn success sm" data-act="saida" data-id="' + esc(a.id) + '">Registrar saída</button>' +
-        '<button type="button" class="btn ghost sm" data-act="cancelar" data-id="' + esc(a.id) + '">Cancelar</button>' +
+        cancelar +
       '</div>' +
     '</div>';
   }
@@ -452,7 +478,9 @@
     if (a.status === 'dentro') {
       acoes += '<button type="button" class="btn success sm" data-act="saida" data-id="' + esc(a.id) + '">Registrar saída</button>';
     }
-    acoes += '<button type="button" class="btn danger sm" data-act="excluirAcesso" data-id="' + esc(a.id) + '">Excluir</button>';
+    if (ehAdmin()) {
+      acoes += '<button type="button" class="btn danger sm" data-act="excluirAcesso" data-id="' + esc(a.id) + '">Excluir</button>';
+    }
     return '<div class="item">' +
       '<div class="item-main">' +
         '<div class="item-title">' + esc(a.nome) + badge + '</div>' +
@@ -465,17 +493,18 @@
 
   function itemPessoaHTML(p) {
     var detalhes = [p.funcao, p.cpf, p.telefone, p.empresa].filter(Boolean).map(esc).join(' · ');
+    var acoes = '<button type="button" class="btn success sm" data-act="entrada" data-id="' + esc(p.id) + '">Entrada</button>';
+    if (ehAdmin()) {
+      acoes += '<button type="button" class="btn ghost sm" data-act="editar" data-id="' + esc(p.id) + '">Editar</button>';
+      acoes += '<button type="button" class="btn danger sm" data-act="excluirPessoa" data-id="' + esc(p.id) + '">Excluir</button>';
+    }
     return '<div class="item with-avatar">' +
       '<div class="avatar">' + esc(iniciais(p.nome)) + '</div>' +
       '<div class="item-main">' +
         '<div class="item-title">' + esc(p.nome) + '</div>' +
         '<div class="item-sub">' + detalhes + '</div>' +
       '</div>' +
-      '<div class="item-actions">' +
-        '<button type="button" class="btn success sm" data-act="entrada" data-id="' + esc(p.id) + '">Entrada</button>' +
-        '<button type="button" class="btn ghost sm" data-act="editar" data-id="' + esc(p.id) + '">Editar</button>' +
-        '<button type="button" class="btn danger sm" data-act="excluirPessoa" data-id="' + esc(p.id) + '">Excluir</button>' +
-      '</div>' +
+      '<div class="item-actions">' + acoes + '</div>' +
     '</div>';
   }
 
@@ -491,6 +520,30 @@
     $('#listaDentro').innerHTML = itens.length
       ? itens.map(itemDentroHTML).join('')
       : '<div class="empty"><strong>Ninguém dentro agora</strong>As entradas registradas aparecem aqui.</div>';
+  }
+
+  function renderSaidaManual() {
+    var ativos = state.acessos.filter(function (a) { return a.status === 'dentro'; });
+    var q = normTxt(state.saidaBusca);
+    var qSimples = q.replace(/[^a-z0-9]/g, '');
+    var itens = ativos.filter(function (a) {
+      if (!q) return true;
+      var alvo = normTxt([a.nome, a.empresa, a.funcao, a.placa, a.cpf, a.veiculo, a.obs, a.notaFiscal, a.obra, a.atividade]
+        .filter(Boolean).join(' '));
+      var alvoSimples = alvo.replace(/[^a-z0-9]/g, '');
+      return alvo.indexOf(q) >= 0 || (!!qSimples && alvoSimples.indexOf(qSimples) >= 0);
+    });
+    itens.sort(function (a, b) {
+      var ta = toDate(a.dataEntrada);
+      var tb = toDate(b.dataEntrada);
+      return (ta ? ta.getTime() : 0) - (tb ? tb.getTime() : 0);
+    });
+    $('#saidaContagem').textContent = itens.length + ' de ' + ativos.length +
+      (ativos.length === 1 ? ' registro ativo' : ' registros ativos');
+    $('#listaSaidaManual').innerHTML = itens.length
+      ? itens.map(itemDentroHTML).join('')
+      : '<div class="empty"><strong>' + (ativos.length ? 'Nenhum registro encontrado' : 'Ninguém dentro agora') + '</strong>' +
+        (ativos.length ? 'Ajuste a busca para localizar o registro.' : 'Não há entradas aguardando saída.') + '</div>';
   }
 
   function acessosFiltrados() {
@@ -555,10 +608,11 @@
     $('#pessoasContagem').textContent = itens.length + (itens.length === 1 ? ' pessoa' : ' pessoas');
     $('#listaPessoasList').innerHTML = itens.length
       ? itens.map(itemPessoaHTML).join('')
-      : '<div class="empty"><strong>Nenhuma pessoa cadastrada</strong>Cadastre trabalhadores ou importe a base da planilha.</div>';
+      : '<div class="empty"><strong>Nenhuma pessoa cadastrada</strong>' +
+        (ehAdmin() ? 'Cadastre trabalhadores ou importe a base da planilha.' : 'A lista de cadastros fica disponível para os administradores.') + '</div>';
 
     var btn = $('#btnImportar');
-    btn.hidden = !useCloud || !BASE.length;
+    btn.hidden = !ehAdmin() || !useCloud || !BASE.length;
     btn.textContent = 'Importar base da planilha (' + BASE.length + ')';
   }
 
@@ -805,6 +859,7 @@
   function renderAll() {
     renderStats();
     renderDentro();
+    renderSaidaManual();
     renderHistorico();
     renderCalendario();
     renderPessoas();
@@ -833,12 +888,32 @@
 
   function setTipo(t) {
     state.tipo = t;
-    $$('.seg-btn').forEach(function (b) {
-      b.classList.toggle('active', b.getAttribute('data-tipo') === t);
+    $$('[data-tipo]').forEach(function (b) {
+      var active = b.getAttribute('data-tipo') === t;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
     $$('.grupo-veiculo').forEach(function (el) { el.hidden = t !== 'veiculo'; });
     $$('.grupo-pessoa').forEach(function (el) { el.hidden = t !== 'pessoa'; });
     atualizarObrigatorioPlaca();
+  }
+
+  function setMovimento(movimento) {
+    if (movimento !== 'entrada' && movimento !== 'saida') return;
+    state.movimento = movimento;
+    var entrada = movimento === 'entrada';
+    $$('[data-movimento]').forEach(function (b) {
+      var active = b.getAttribute('data-movimento') === movimento;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    $('#painelEntrada').hidden = !entrada;
+    $('#painelSaida').hidden = entrada;
+    $('#movTitulo').textContent = entrada ? 'Registrar entrada' : 'Registrar saída';
+    $('#movDescricao').textContent = entrada
+      ? 'Selecione o tipo, preencha os dados e confirme. Data e hora são gravadas automaticamente.'
+      : 'Localize uma entrada ativa e finalize o registro com data e hora automáticas.';
+    if (!entrada) renderSaidaManual();
   }
 
   function registrarEntrada(ev) {
@@ -927,6 +1002,7 @@
   }
 
   function excluirAcesso(id, msg) {
+    if (!exigirAdmin('Somente o Admin pode excluir ou cancelar registros.')) return;
     if (!confirm(msg || 'Excluir este registro de acesso?')) return;
     docDelete('acessos', id).then(function () {
       toast('Registro excluído');
@@ -977,6 +1053,7 @@
 
   function salvarPessoa(ev) {
     ev.preventDefault();
+    if (!exigirAdmin('Somente o Admin pode gerenciar o cadastro de pessoas.')) return;
     var nome = $('#pesNome').value.trim();
     var funcao = $('#pesFuncao').value.trim();
     var tipoDoc = $('#pesTipoDoc').value;
@@ -1033,6 +1110,7 @@
   }
 
   function editarPessoa(id) {
+    if (!exigirAdmin('Somente o Admin pode editar cadastros.')) return;
     var p = state.pessoas.find(function (x) { return x.id === id; });
     if (!p) return;
     state.editPessoaId = id;
@@ -1061,6 +1139,7 @@
   }
 
   function excluirPessoa(id) {
+    if (!exigirAdmin('Somente o Admin pode excluir cadastros.')) return;
     var p = state.pessoas.find(function (x) { return x.id === id; });
     if (!p) return;
     if (!confirm('Excluir ' + p.nome + ' do cadastro?')) return;
@@ -1074,6 +1153,7 @@
   }
 
   function importarBase() {
+    if (!exigirAdmin('Somente o Admin pode importar a base.')) return;
     if (!useCloud || !BASE.length || !fs) return;
     var existentes = {};
     state.pessoas.forEach(function (p) { existentes[normTxt(p.nome)] = true; });
@@ -1134,9 +1214,15 @@
       });
     });
 
-    $$('.seg-btn').forEach(function (b) {
+    $$('[data-tipo]').forEach(function (b) {
       b.addEventListener('click', function () {
         setTipo(b.getAttribute('data-tipo'));
+      });
+    });
+
+    $$('[data-movimento]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        setMovimento(b.getAttribute('data-movimento'));
       });
     });
 
@@ -1193,6 +1279,10 @@
       renderCalendario();
     });
     $('#pessoasBusca').addEventListener('input', renderPessoas);
+    $('#saidaBusca').addEventListener('input', function () {
+      state.saidaBusca = this.value;
+      renderSaidaManual();
+    });
 
     $('#semQ').addEventListener('input', function () {
       state.semanaFiltros.q = this.value;
@@ -1220,6 +1310,7 @@
     });
 
     $('#listaDentro').addEventListener('click', onListaClick);
+    $('#listaSaidaManual').addEventListener('click', onListaClick);
     $('#listaHistorico').addEventListener('click', onListaClick);
     $('#listaPessoasList').addEventListener('click', onListaClick);
 
@@ -1285,9 +1376,26 @@
     });
   }
 
+  function abrirSessaoCloud(user) {
+    state.sessao = { email: user.email || '', uid: user.uid };
+    state.perfil = 'portaria';
+    aplicarPermissoes();
+    fs.collection('administradores').doc(user.uid).get().then(function (snapshot) {
+      if (!state.sessao || state.sessao.uid !== user.uid) return;
+      state.perfil = snapshot.exists ? 'admin' : 'portaria';
+      aplicarPermissoes();
+      abrirApp();
+    }).catch(function (error) {
+      console.error(error);
+      if (state.sessao && state.sessao.uid === user.uid) abrirApp();
+    });
+  }
+
   function entrarLocal() {
     if (useCloud) return;
     state.sessao = { email: 'local' };
+    state.perfil = 'admin';
+    aplicarPermissoes();
     abrirApp();
   }
 
@@ -1311,8 +1419,10 @@
     pararDados();
     if (useCloud && fs) fs.clearPersistence().catch(function () {});
     state.sessao = null;
+    state.perfil = 'portaria';
     state.acessos = [];
     state.pessoas = [];
+    aplicarPermissoes();
     renderAll();
     $('#loginScreen').hidden = false;
     $('#btnSair').hidden = true;
@@ -1328,8 +1438,10 @@
     $('#btnSair').hidden = false;
     $('#loginSenha').value = '';
     $('#loginErro').textContent = '';
+    aplicarPermissoes();
     $$('.nav-btn').forEach(function (b) { b.hidden = false; });
     iniciarDados();
+    setMovimento('entrada');
     setTab('registrar');
     renderAll();
   }
@@ -1357,7 +1469,9 @@
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     bind();
+    setMovimento('entrada');
     setTipo('veiculo');
+    aplicarPermissoes();
     $('#loginScreen').hidden = false;
     $('#loginLocal').hidden = !state.demo;
     $('#loginEmail').focus();
@@ -1365,8 +1479,7 @@
     if (auth) {
       auth.onAuthStateChanged(function (user) {
         if (user) {
-          state.sessao = { email: user.email || '' };
-          abrirApp();
+          abrirSessaoCloud(user);
         } else if (state.sessao) {
           encerrarSessao();
         } else if (fs) {
@@ -1377,6 +1490,7 @@
 
     setInterval(function () {
       if (state.tab === 'dentro') renderDentro();
+      if (state.movimento === 'saida') renderSaidaManual();
     }, 30000);
   }
 
