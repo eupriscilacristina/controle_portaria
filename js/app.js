@@ -12,8 +12,10 @@
     filtros: { q: '', data: '', status: 'todos' },
     semanaRef: new Date(),
     semanaFiltros: { q: '', empresa: '', obra: '' },
-    manMesRef: new Date(),
-    manNovo: { nome: '', funcao: '', empresa: '' }
+    manSemanaRef: segundaDaSemana(new Date()),
+    manQtdSemanas: 6,
+    manNovo: { nome: '', funcao: '', empresa: '' },
+    manPessoas: {}
   };
 
   var useCloud = false;
@@ -619,22 +621,6 @@
     return dias;
   }
 
-  function diasDoMes(ref) {
-    var ano = ref.getFullYear();
-    var mes = ref.getMonth();
-    var total = new Date(ano, mes + 1, 0).getDate();
-    var dias = [];
-    for (var i = 1; i <= total; i++) dias.push(new Date(ano, mes, i));
-    return dias;
-  }
-
-  function rotuloMes(ref) {
-    var f = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
-      'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-    var m = f[ref.getMonth()] || '';
-    return m.charAt(0).toUpperCase() + m.slice(1) + ' / ' + ref.getFullYear();
-  }
-
   function mesmoDia(a, b) {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   }
@@ -1200,16 +1186,46 @@
     return manItens();
   }
 
-  function manLinhas() {
-    var dias = diasDoMes(state.manMesRef);
+  function semanaEm(inicio, n) {
+    return diasDaSemana(new Date(inicio.getTime() + n * 7 * 86400000));
+  }
+
+  function manPessoas() {
+    var mapa = {};
+    manFiltrados().forEach(function (a) {
+      var k = normTxt(a.nome);
+      if (!k) return;
+      if (!mapa[k]) {
+        mapa[k] = {
+          chave: k, nome: a.nome, funcao: a.funcao || '', empresa: a.empresa || '',
+          placa: a.placa || '', veiculo: a.veiculo || '', tipo: a.tipo || 'pessoa', ids: []
+        };
+      }
+      mapa[k].ids.push(a.id);
+      if (a.funcao && !mapa[k].funcao) mapa[k].funcao = a.funcao;
+      if (a.empresa && !mapa[k].empresa) mapa[k].empresa = a.empresa;
+      if (a.placa && !mapa[k].placa) mapa[k].placa = a.placa;
+    });
+    state.manPessoas = mapa;
+    return mapa;
+  }
+
+  function manLinhas(dias) {
     var inicio = dias[0];
-    var fim = dias[dias.length - 1];
+    var fim = dias[6];
     var mapa = {};
     var ordem = [];
 
     manFiltrados().forEach(function (a) {
       var k = normTxt(a.nome);
       if (!k) return;
+      var dentro = false;
+      var te = toDate(a.dataEntrada);
+      var ts = toDate(a.dataSaida);
+      if (te && dentroDoIntervalo(te, inicio, fim)) dentro = true;
+      if (ts && dentroDoIntervalo(ts, inicio, fim)) dentro = true;
+      if (!dentro) return;
+
       if (!mapa[k]) {
         mapa[k] = {
           chave: k, nome: a.nome, funcao: a.funcao || '', empresa: a.empresa || '',
@@ -1224,10 +1240,8 @@
       if (a.funcao && !row.funcao) row.funcao = a.funcao;
       if (a.placa && !row.placa) row.placa = a.placa;
 
-      var te = toDate(a.dataEntrada);
-      var ts = toDate(a.dataSaida);
       if (te && dentroDoIntervalo(te, inicio, fim)) {
-        for (var i = 0; i < dias.length; i++) {
+        for (var i = 0; i < 7; i++) {
           if (mesmoDia(te, dias[i])) {
             var hE = pad(te.getHours()) + ':' + pad(te.getMinutes());
             if (!row.dias[i].e || hE < row.dias[i].e.hora) {
@@ -1238,7 +1252,7 @@
         }
       }
       if (ts && dentroDoIntervalo(ts, inicio, fim)) {
-        for (var j = 0; j < dias.length; j++) {
+        for (var j = 0; j < 7; j++) {
           if (mesmoDia(ts, dias[j])) {
             var hS = pad(ts.getHours()) + ':' + pad(ts.getMinutes());
             if (!row.dias[j].s || hS > row.dias[j].s.hora) {
@@ -1257,8 +1271,6 @@
       return (mapa[a].nome || '') < (mapa[b].nome || '') ? -1 : 1;
     });
 
-    state.manRowMap = mapa;
-
     return ordem.map(function (k) { return mapa[k]; });
   }
 
@@ -1267,7 +1279,7 @@
       (extra || '') + '>';
   }
 
-  function manInputData(dias, mov, chave, diaIso) {
+  function manInputHora(mov, chave, diaIso) {
     var val = mov ? mov.hora : '';
     var attrs = ' data-man-chave="' + esc(chave) + '" data-man-dia="' + esc(diaIso) + '"' +
       ' data-man-mov="' + mov + '" aria-label="Hora"';
@@ -1278,59 +1290,48 @@
   function manLinhaNova(dias) {
     var n = state.manNovo;
     var corpo = '<tr class="nova-linha">' +
-      '<td class="pessoa"><input type="text" class="celula-input c-nome" id="manNovoNome" ' +
+      '<td class="pessoa"><input type="text" class="celula-input c-nome" data-man-novo="nome" ' +
       'placeholder="Nova pessoa" value="' + esc(n.nome) + '"></td>' +
-      '<td class="sub"><input type="text" class="celula-input c-funcao" id="manNovoFuncao" ' +
+      '<td class="sub"><input type="text" class="celula-input c-funcao" data-man-novo="funcao" ' +
       'placeholder="Função" value="' + esc(n.funcao) + '"></td>' +
-      '<td class="sub"><input type="text" class="celula-input c-empresa" id="manNovoEmpresa" ' +
+      '<td class="sub"><input type="text" class="celula-input c-empresa" data-man-novo="empresa" ' +
       'placeholder="Empresa" value="' + esc(n.empresa) + '"></td>';
     dias.forEach(function (d) {
       var diaIso = isoDate(d);
-      corpo += '<td class="hora e"><input type="time" class="celula-input hora-input e" data-man-novo="e" ' +
+      corpo += '<td class="hora e"><input type="time" class="celula-input hora-input e" data-man-novo-hora="e" ' +
         'data-man-dia="' + esc(diaIso) + '" aria-label="Hora da entrada"></td>' +
-        '<td class="hora s"><input type="time" class="celula-input hora-input s" data-man-novo="s" ' +
+        '<td class="hora s"><input type="time" class="celula-input hora-input s" data-man-novo-hora="s" ' +
         'data-man-dia="' + esc(diaIso) + '" aria-label="Hora da saída"></td>';
     });
     if (ehAdmin()) corpo += '<td class="nowrap">—</td>';
     return corpo + '</tr>';
   }
 
-  function renderManual() {
-    var tabela = $('#tabelaManual');
-    if (!tabela) return;
-    var dias = diasDoMes(state.manMesRef);
-    var hoje = new Date();
-    var rotulo = $('#manMesLabel');
-    if (rotulo) rotulo.textContent = rotuloMes(state.manMesRef);
-
-    var linhas = manLinhas();
-    var comMov = linhas.filter(function (r) {
-      return r.dias.some(function (d) { return d.e || d.s; });
-    }).length;
-    var cont = $('#manContagem');
-    if (cont) cont.textContent = linhas.length + ' pessoas · ' + comMov + ' com movimento';
-
+  function manCabecalho(dias) {
     var head1 = '<tr>' +
       '<th class="pessoa" rowspan="2">Nome Completo</th>' +
       '<th class="sub" rowspan="2">Função</th>' +
       '<th class="sub" rowspan="2">Empresa</th>';
     var head2 = '<tr>';
+    var hoje = new Date();
     dias.forEach(function (d) {
-      var fds = d.getDay() === 0 || d.getDay() === 6;
-      var ehHoje = mesmoDia(d, hoje);
-      var cls = 'dia-col' + (fds ? ' fds' : '') + (ehHoje ? ' hoje' : '');
+      var cls = 'dia-col' + (mesmoDia(d, hoje) ? ' hoje' : '');
       head1 += '<th class="' + cls + '" colspan="2"><b>' + d.getDate() + '</b> ' +
         DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + '</th>';
-      head2 += '<th class="' + cls + ' rot-e' + (fds ? ' fds' : '') + '">E</th>' +
-        '<th class="' + cls + ' rot-s' + (fds ? ' fds' : '') + '">S</th>';
+      head2 += '<th class="' + cls + ' rot-e">E</th><th class="' + cls + ' rot-s">S</th>';
     });
     if (ehAdmin()) head1 += '<th rowspan="2">Excluir</th>';
-    head1 += '</tr>';
-    head2 += '</tr>';
+    return head1 + '</tr>' + head2 + '</tr>';
+  }
 
-    var cols = 3 + dias.length * 2 + (ehAdmin() ? 1 : 0);
+  function blocoSemana(dias, ehAtual) {
+    var ini = dias[0];
+    var fim = dias[6];
+    var linhas = manLinhas(dias);
+    var cols = 3 + 14 + (ehAdmin() ? 1 : 0);
     var corpo = '';
     var ultimaEmpresa = null;
+
     linhas.forEach(function (r) {
       if (r.empresa && r.empresa !== ultimaEmpresa) {
         ultimaEmpresa = r.empresa;
@@ -1344,45 +1345,76 @@
         '<td class="sub">' + manInput('empresa', r.empresa, who) + '</td>';
       r.dias.forEach(function (d, i) {
         var diaIso = isoDate(dias[i]);
-        corpo += '<td class="hora e' + (d.e ? '' : ' vazio') + '">' + manInputData(dias, 'e', r.chave, diaIso) + '</td>' +
-          '<td class="hora s' + (d.s ? '' : ' vazio') + '">' + manInputData(dias, 's', r.chave, diaIso) + '</td>';
+        corpo += '<td class="hora e' + (d.e ? '' : ' vazio') + '">' + manInputHora(d.e, r.chave, diaIso) + '</td>' +
+          '<td class="hora s' + (d.s ? '' : ' vazio') + '">' + manInputHora(d.s, r.chave, diaIso) + '</td>';
       });
       if (ehAdmin()) {
-        corpo += '<td class="nowrap"><button type="button" class="btn danger sm" data-man-excluir-linha="' +
-          esc(r.chave) + '">Excluir</button></td>';
+        corpo += '<td class="nowrap"><button type="button" class="btn danger sm" data-man-excluir="' +
+          esc(r.ids.join(',')) + '" data-man-nome="' + esc(r.nome) + '">Excluir</button></td>';
       }
       corpo += '</tr>';
     });
 
     if (!linhas.length) {
-      corpo = '<tr><td colspan="' + cols + '" style="padding:20px;color:#64748b">' +
-        'Nenhum registro neste mês. Digite o nome na primeira linha e a hora na coluna do dia.</td></tr>';
+      corpo = '<tr class="semana-vazia"><td colspan="' + cols + '">' +
+        'Sem registros nesta semana — use a primeira linha para incluir alguém.</td></tr>';
     }
 
-    tabela.innerHTML = '<thead>' + head1 + head2 + '</thead><tbody>' +
-      manLinhaNova(dias) + corpo + '</tbody>';
+    return '<section class="semana-bloco' + (ehAtual ? ' atual' : '') + '">' +
+      '<header class="semana-head">' +
+      '<strong>Semana de ' + pad(ini.getDate()) + '/' + pad(ini.getMonth() + 1) + ' a ' +
+      pad(fim.getDate()) + '/' + pad(fim.getMonth() + 1) + '</strong>' +
+      (ehAtual ? '<span class="tag-atual">atual</span>' : '') +
+      '</header>' +
+      '<div class="espelho-wrap"><table class="espelho">' +
+      '<thead>' + manCabecalho(dias) + '</thead>' +
+      '<tbody>' + manLinhaNova(dias) + corpo + '</tbody>' +
+      '</table></div></section>';
   }
 
-  function manRow(chave) {
-    return (state.manRowMap || {})[chave] || null;
+  function renderManual() {
+    var cont = $('#manSemanas');
+    if (!cont) return;
+    manPessoas();
+
+    var hoje = new Date();
+    var inicio = state.manSemanaRef;
+    var html = '';
+    for (var i = 0; i < state.manQtdSemanas; i++) {
+      var dias = semanaEm(inicio, i);
+      var ehAtual = mesmoDia(dias[0], segundaDaSemana(hoje));
+      html += blocoSemana(dias, ehAtual);
+    }
+    cont.innerHTML = html;
+
+    var contagem = $('#manContagem');
+    if (contagem) {
+      var totalPessoas = Object.keys(state.manPessoas || {}).length;
+      contagem.textContent = totalPessoas + ' pessoas · ' + state.manQtdSemanas + ' semanas';
+    }
+
+    var btnMais = $('#manMaisSemanas');
+    if (btnMais) btnMais.hidden = false;
+  }
+
+  function manPessoa(chave) {
+    return (state.manPessoas || {})[chave] || null;
   }
 
   function salvarTextoManual(input) {
     var chave = input.getAttribute('data-man-chave');
-    var campo = input.className.match(/c-(nome|empresa|funcao)/);
-    if (!chave || !campo) return;
-    var row = manRow(chave);
-    if (!row) return;
+    var m = input.className.match(/c-(nome|empresa|funcao)/);
+    if (!chave || !m) return;
+    var p = manPessoa(chave);
+    if (!p) return;
     var valor = input.value.trim();
-    var patch = {};
-    patch[campo[1]] = valor || null;
-    if (campo[1] === 'nome' && !valor) { renderManual(); return; }
+    if (m[1] === 'nome' && !valor) { renderManual(); return; }
 
-    Promise.all(row.ids.map(function (id) {
+    var patch = {};
+    patch[m[1]] = valor || null;
+    Promise.all(p.ids.map(function (id) {
       return docUpdate('acessos', id, patch);
-    })).then(function () {
-      if (campo[1] === 'nome') toast('Nome atualizado');
-    }).catch(function (err) {
+    })).catch(function (err) {
       console.error(err);
       toast('Erro ao salvar', 'erro');
       renderManual();
@@ -1412,7 +1444,7 @@
     var dt = new Date(diaIso + 'T' + hora + ':00');
     if (isNaN(dt)) { renderManual(); return; }
     var iso = dt.toISOString();
-    var row = manRow(chave);
+    var p = manPessoa(chave);
 
     var base = { origem: 'manual', dataMovimento: iso };
     if (mov === 'e') {
@@ -1425,13 +1457,13 @@
       base.dataSaida = iso;
       base.status = 'fora';
     }
-    if (row) {
-      base.nome = row.nome;
-      base.empresa = row.empresa || null;
-      base.funcao = row.funcao || null;
-      base.tipo = row.tipo || 'pessoa';
-      base.veiculo = row.veiculo || null;
-      base.placa = row.placa || null;
+    if (p) {
+      base.nome = p.nome;
+      base.empresa = p.empresa || null;
+      base.funcao = p.funcao || null;
+      base.tipo = p.tipo || 'pessoa';
+      base.veiculo = p.veiculo || null;
+      base.placa = p.placa || null;
     }
 
     var acao = id
@@ -1446,11 +1478,14 @@
   }
 
   function registrarNovoHorario(input) {
-    var mov = input.getAttribute('data-man-novo');
+    var mov = input.getAttribute('data-man-novo-hora');
     var diaIso = input.getAttribute('data-man-dia');
     var hora = input.value;
     var linha = input.closest('tr');
-    var nome = linha && linha.querySelector('#manNovoNome') ? linha.querySelector('#manNovoNome').value.trim() : '';
+    var campoNome = linha.querySelector('[data-man-novo="nome"]');
+    var campoFuncao = linha.querySelector('[data-man-novo="funcao"]');
+    var campoEmpresa = linha.querySelector('[data-man-novo="empresa"]');
+    var nome = campoNome.value.trim();
 
     if (!hora) { renderManual(); return; }
     if (!nome) {
@@ -1463,25 +1498,23 @@
     if (isNaN(dt)) { renderManual(); return; }
     var iso = dt.toISOString();
 
-    var doc = {
+    docAdd('acessos', {
       origem: 'manual',
       tipoManual: mov === 'e' ? 'entrada' : 'saida',
       tipo: 'pessoa',
       nome: nome,
-      empresa: (linha.querySelector('#manNovoEmpresa').value || '').trim() || null,
-      funcao: (linha.querySelector('#manNovoFuncao').value || '').trim() || null,
+      empresa: (campoEmpresa.value || '').trim() || null,
+      funcao: (campoFuncao.value || '').trim() || null,
       veiculo: null,
       placa: null,
       dataMovimento: iso,
       dataEntrada: mov === 'e' ? iso : null,
       dataSaida: mov === 's' ? iso : null,
       status: mov === 'e' ? 'dentro' : 'fora'
-    };
-
-    docAdd('acessos', doc).then(function () {
+    }).then(function () {
       state.manNovo.nome = nome;
-      state.manNovo.empresa = doc.empresa || '';
-      state.manNovo.funcao = doc.funcao || '';
+      state.manNovo.empresa = (campoEmpresa.value || '').trim();
+      state.manNovo.funcao = (campoFuncao.value || '').trim();
       toast(mov === 'e' ? 'Entrada registrada' : 'Saída registrada');
     }).catch(function (err) {
       console.error(err);
@@ -1489,11 +1522,11 @@
     });
   }
 
-  function excluirLinhaManual(chave) {
-    var row = manRow(chave);
-    if (!row || !row.ids.length) return;
-    if (!confirm('Excluir todos os horários de ' + row.nome + ' nesta semana?')) return;
-    Promise.all(row.ids.map(function (id) {
+  function excluirLinhaManual(idsCsv, nome) {
+    var ids = idsCsv.split(',').filter(function (x) { return x; });
+    if (!ids.length) return;
+    if (!confirm('Excluir os horários de ' + nome + ' nesta semana?')) return;
+    Promise.all(ids.map(function (id) {
       return docDelete('acessos', id);
     })).then(function () {
       toast('Registros excluídos');
@@ -1504,22 +1537,29 @@
   }
 
   function exportarManualCsv() {
-    var dias = diasDoMes(state.manMesRef);
-    var head = ['Nome Completo', 'Funcao', 'Empresa'];
-    dias.forEach(function (d) {
-      var lbl = pad(d.getDate()) + '/' + pad(d.getMonth() + 1);
-      head.push(lbl + ' E');
-      head.push(lbl + ' S');
-    });
-    var linhas = [head.map(csvCell).join(';')];
-    manLinhas().forEach(function (r) {
-      var linha = [r.nome, r.funcao, r.empresa];
-      r.dias.forEach(function (d) {
-        linha.push(d.e ? d.e.hora : '');
-        linha.push(d.s ? d.s.hora : '');
+    var linhas = [];
+    for (var i = 0; i < state.manQtdSemanas; i++) {
+      var dias = semanaEm(state.manSemanaRef, i);
+      var ini = dias[0];
+      var fim = dias[6];
+      var head = ['Semana ' + pad(ini.getDate()) + '/' + pad(ini.getMonth() + 1) + ' a ' +
+        pad(fim.getDate()) + '/' + pad(fim.getMonth() + 1)];
+      dias.forEach(function (d) {
+        var lbl = DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + ' ' + d.getDate();
+        head.push(lbl + ' E');
+        head.push(lbl + ' S');
       });
-      linhas.push(linha.map(csvCell).join(';'));
-    });
+      linhas.push(head.map(csvCell).join(';'));
+      manLinhas(dias).forEach(function (r) {
+        var l = [r.nome, r.funcao, r.empresa];
+        r.dias.forEach(function (d) {
+          l.push(d.e ? d.e.hora : '');
+          l.push(d.s ? d.s.hora : '');
+        });
+        linhas.push(l.map(csvCell).join(';'));
+      });
+      linhas.push('');
+    }
     baixarCsv('registro-manual-' + isoDate(new Date()) + '.csv', linhas);
   }
 
@@ -1620,36 +1660,40 @@
     $('#listaPessoasList').addEventListener('click', onListaClick);
 
     $('#btnManExportar').addEventListener('click', exportarManualCsv);
-    $('#manMesAnterior').addEventListener('click', function () {
-      state.manMesRef = new Date(state.manMesRef.getFullYear(), state.manMesRef.getMonth() - 1, 1);
+    $('#manSemanaAnterior').addEventListener('click', function () {
+      state.manSemanaRef = new Date(state.manSemanaRef.getTime() - 7 * 86400000);
       renderManual();
     });
-    $('#manMesProximo').addEventListener('click', function () {
-      state.manMesRef = new Date(state.manMesRef.getFullYear(), state.manMesRef.getMonth() + 1, 1);
+    $('#manSemanaProxima').addEventListener('click', function () {
+      state.manSemanaRef = new Date(state.manSemanaRef.getTime() + 7 * 86400000);
       renderManual();
     });
-    $('#manMesAtual').addEventListener('click', function () {
-      state.manMesRef = new Date();
+    $('#manSemanaAtual').addEventListener('click', function () {
+      state.manSemanaRef = segundaDaSemana(new Date());
       renderManual();
     });
-    $('#tabelaManual').addEventListener('input', function (e) {
-      if (e.target.id === 'manNovoNome') state.manNovo.nome = e.target.value;
-      if (e.target.id === 'manNovoFuncao') state.manNovo.funcao = e.target.value;
-      if (e.target.id === 'manNovoEmpresa') state.manNovo.empresa = e.target.value;
+    $('#manMaisSemanas').addEventListener('click', function () {
+      state.manQtdSemanas += 4;
+      renderManual();
     });
-    $('#tabelaManual').addEventListener('change', function (e) {
-      var novo = e.target.closest('[data-man-novo]');
+    $('#manSemanas').addEventListener('input', function (e) {
+      var k = e.target.getAttribute && e.target.getAttribute('data-man-novo');
+      if (!k) return;
+      state.manNovo[k] = e.target.value;
+    });
+    $('#manSemanas').addEventListener('change', function (e) {
+      var novo = e.target.closest('[data-man-novo-hora]');
       if (novo) { registrarNovoHorario(novo); return; }
       var hora = e.target.closest('.hora-input');
       if (hora) { salvarHoraManual(hora); return; }
       var txt = e.target.closest('.celula-input');
       if (txt) { salvarTextoManual(txt); return; }
     });
-    $('#tabelaManual').addEventListener('click', function (e) {
-      var ex = e.target.closest('[data-man-excluir-linha]');
+    $('#manSemanas').addEventListener('click', function (e) {
+      var ex = e.target.closest('[data-man-excluir]');
       if (ex) {
         if (!exigirAdmin('Somente o Admin pode excluir registros.')) return;
-        excluirLinhaManual(ex.getAttribute('data-man-excluir-linha'));
+        excluirLinhaManual(ex.getAttribute('data-man-excluir'), ex.getAttribute('data-man-nome'));
       }
     });
 

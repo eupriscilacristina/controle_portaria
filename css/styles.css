@@ -1110,14 +1110,6 @@ input::placeholder {
   margin-bottom: 14px;
 }
 
-.espelho-wrap {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
 
 table.espelho {
   border-collapse: collapse;
@@ -1432,60 +1424,16 @@ table.espelho {
   margin: 0 0 8px;
 }
 
-.espelho th.dia-col {
-  text-align: center;
-  min-width: 78px;
-  font-size: 12px;
-  line-height: 1.2;
-}
 
-.espelho th.dia-col b {
-  display: block;
-  font-size: 15px;
-  font-weight: 800;
-}
 
-.espelho th.dia-col.fds {
-  background: #eef2f7;
-  color: #64748b;
-}
 
-.espelho th.dia-col.hoje {
-  background: var(--brand);
-  color: #fff;
-}
 
-.espelho th.rot-e,
-.espelho th.rot-s {
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: #94a3b8;
-  min-width: 34px;
-}
 
-.espelho th.rot-e.fds,
-.espelho th.rot-s.fds {
-  background: #e6ebf2;
-  color: #94a3b8;
-}
 
-.espelho-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  max-height: 72vh;
-}
 
-.espelho {
-  min-width: max-content;
-}
 
 .espelho td.hora,
 .espelho th.dia-col,
-.espelho th.rot-e,
-.espelho th.rot-s {
-  width: 34px;
-  min-width: 34px;
-}
 
 .espelho td.pessoa,
 .espelho th.pessoa {
@@ -1509,4 +1457,87 @@ table.espelho {
 
 .espelho .nova-linha td.pessoa {
   background: #f8fafc;
+}
+
+.espelho th.dia-col {
+  text-align: center;
+  min-width: 66px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.espelho th.dia-col b {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.espelho th.dia-col.hoje {
+  background: var(--brand);
+  color: #fff;
+}
+
+.espelho th.rot-e,
+.espelho th.rot-s {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+  min-width: 32px;
+}
+
+.semana-bloco {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  margin-bottom: 18px;
+}
+
+.semana-bloco.atual {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+}
+
+.semana-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  background: #f1f5f9;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.semana-bloco.atual .semana-head {
+  background: var(--brand);
+  color: #fff;
+}
+
+.tag-atual {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.semana-bloco .espelho-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.semana-bloco .espelho {
+  min-width: max-content;
+}
+
+.semana-bloco .espelho td.hora {
+  width: 32px;
+  min-width: 32px;
+}
+
+.semana-vazia td {
+  padding: 12px 14px;
+  color: #94a3b8;
+  font-size: 13px;
 }
