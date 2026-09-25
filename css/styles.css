@@ -1541,3 +1541,16 @@ table.espelho {
   color: #94a3b8;
   font-size: 13px;
 }
+
+.espelho th.dia-col.fora,
+.espelho th.rot-e.fora,
+.espelho th.rot-s.fora {
+  background: #f1f5f9;
+  color: #94a3b8;
+  opacity: 0.65;
+}
+
+.espelho td.hora.fora {
+  background: #f8fafc;
+  opacity: 0.5;
+}
