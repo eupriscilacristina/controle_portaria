@@ -13,7 +13,6 @@
     semanaRef: new Date(),
     semanaFiltros: { q: '', empresa: '', obra: '' },
     manualEditId: null,
-    manualFiltros: { q: '' },
     manSemanaRef: new Date()
   };
 
@@ -1182,13 +1181,7 @@
   }
 
   function manFiltrados() {
-    var q = (state.manualFiltros.q || '').trim().toLowerCase();
-    if (!q) return manItens();
-    return manItens().filter(function (a) {
-      var hay = [a.nome, a.empresa, a.funcao, a.veiculo, a.placa, a.obra]
-        .map(function (x) { return x || ''; }).join(' ').toLowerCase();
-      return hay.indexOf(q) !== -1;
-    });
+    return manItens();
   }
 
   function manLinhas() {
@@ -1204,13 +1197,12 @@
       if (!mapa[k]) {
         mapa[k] = {
           id: a.id, nome: a.nome, funcao: a.funcao || '', empresa: a.empresa || '',
-          placa: a.placa || '', veiculo: a.veiculo || '', obra: a.obra || '',
+          placa: a.placa || '', veiculo: a.veiculo || '',
           dias: dias.map(function () { return { e: null, s: null }; })
         };
         ordem.push(k);
       }
       var row = mapa[k];
-      if (a.obra && !row.obra) row.obra = a.obra;
       if (a.funcao && !row.funcao) row.funcao = a.funcao;
       if (a.placa && !row.placa) row.placa = a.placa;
 
@@ -1250,11 +1242,11 @@
     return ordem.map(function (k) { return mapa[k]; });
   }
 
-  function manCelula(mov, dia) {
+  function manCelula(mov, movId) {
     if (!mov) return '<td class="hora vazio">—</td>';
-    return '<td class="hora ' + (mov.hora ? 'e' : 's') + '">' +
+    return '<td class="hora ' + movId + '">' +
       '<button type="button" class="hora-btn" data-man-editar="' + esc(mov.id) + '" ' +
-      'title="Clique para editar">' + esc(mov.hora) + '</button></td>';
+      'data-man-mov="' + movId + '" title="Clique para editar">' + esc(mov.hora) + '</button></td>';
   }
 
   function renderManual() {
@@ -1304,15 +1296,24 @@
         '<td class="sub">' + esc(r.funcao) + '</td>' +
         '<td class="sub">' + esc(r.empresa) + '</td>';
       r.dias.forEach(function (d) {
-        corpo += manCelula(d.e, d) + manCelula(d.s, d);
+        corpo += manCelula(d.e, 'e') + manCelula(d.s, 's');
       });
-      var alvo = r.dias.reduce(function (acc, d) {
-        return acc || d.e || d.s;
-      }, null);
-      corpo += '<td class="nowrap">' +
-        (alvo ? '<button type="button" class="btn ghost sm" data-man-editar="' + esc(alvo.id) + '">Editar</button> ' +
-          '<button type="button" class="btn danger sm" data-man-excluir="' + esc(alvo.id) + '">Excluir</button>' : '—') +
-        '</td></tr>';
+      var alvoE = r.dias.reduce(function (acc, d) { return acc || d.e; }, null);
+      var alvoS = r.dias.reduce(function (acc, d) { return acc || d.s; }, null);
+      var alvo = alvoE || alvoS;
+      var botoes = '';
+      if (alvoE) {
+        botoes += '<button type="button" class="btn ghost sm" data-man-editar="' + esc(alvoE.id) + '" ' +
+          'data-man-mov="e">Editar entrada</button> ';
+      }
+      if (alvoS) {
+        botoes += '<button type="button" class="btn ghost sm" data-man-editar="' + esc(alvoS.id) + '" ' +
+          'data-man-mov="s">Editar saída</button> ';
+      }
+      if (ehAdmin() && alvo) {
+        botoes += '<button type="button" class="btn danger sm" data-man-excluir="' + esc(alvo.id) + '">Excluir</button>';
+      }
+      corpo += '<td class="nowrap">' + (botoes || '—') + '</td></tr>';
     });
 
     if (!linhas.length) {
@@ -1373,7 +1374,6 @@
       funcao: $('#manFuncao').value.trim() || null,
       veiculo: tipoPessoa === 'veiculo' ? $('#manVeiculo').value : null,
       placa: tipoPessoa === 'veiculo' ? ($('#manPlaca').value.trim().toUpperCase() || null) : null,
-      obra: $('#manObra').value.trim() || null,
       dataMovimento: dt.toISOString()
     };
     if (tipo === 'entrada') {
@@ -1401,11 +1401,12 @@
     });
   }
 
-  function editarManual(id) {
+  function editarManual(id, mov) {
     var a = manItens().find(function (x) { return x.id === id; });
     if (!a) return;
     state.manualEditId = id;
-    var tipo = a.tipoManual || (a.dataSaida && !a.dataEntrada ? 'saida' : 'entrada');
+    var tipo = mov || a.tipoManual || (a.dataSaida && !a.dataEntrada ? 'saida' : 'entrada');
+    if (tipo !== 'entrada' && tipo !== 'saida') tipo = 'entrada';
     var d = toDate(tipo === 'saida' ? (a.dataSaida || a.dataMovimento) : (a.dataEntrada || a.dataMovimento)) || new Date();
     if ($('#manTipo')) $('#manTipo').value = tipo;
     if ($('#manData')) $('#manData').value = isoDate(d);
@@ -1416,12 +1417,14 @@
     if ($('#manTipoPessoa')) $('#manTipoPessoa').value = a.tipo || 'pessoa';
     if ($('#manVeiculo')) $('#manVeiculo').value = a.veiculo || 'Carro';
     if ($('#manPlaca')) $('#manPlaca').value = a.placa || '';
-    if ($('#manObra')) $('#manObra').value = a.obra || '';
     if ($('#btnManualAdd')) $('#btnManualAdd').textContent = 'Salvar alterações';
     if ($('#btnManualCancelar')) $('#btnManualCancelar').hidden = false;
     setManTipoPessoa();
     setManMovimento();
+    if ($('#btnManualAdd')) $('#btnManualAdd').textContent = 'Salvar alterações';
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    var h = $('#manHora');
+    if (h) { h.focus(); if (h.select) h.select(); }
   }
 
   function exportarManualCsv() {
@@ -1548,15 +1551,6 @@
     });
     $('#manTipoPessoa').addEventListener('change', setManTipoPessoa);
     $('#manTipo').addEventListener('change', setManMovimento);
-    $('#manFiltQ').addEventListener('input', function () {
-      state.manualFiltros.q = this.value;
-      renderManual();
-    });
-    $('#btnManLimparFiltros').addEventListener('click', function () {
-      state.manualFiltros = { q: '' };
-      $('#manFiltQ').value = '';
-      renderManual();
-    });
     $('#btnManExportar').addEventListener('click', exportarManualCsv);
     $('#manSemanaAnterior').addEventListener('click', function () {
       state.manSemanaRef = new Date(state.manSemanaRef.getTime() - 7 * 86400000);
@@ -1572,9 +1566,13 @@
     });
     $('#tabelaManual').addEventListener('click', function (e) {
       var ed = e.target.closest('[data-man-editar]');
-      if (ed) { editarManual(ed.getAttribute('data-man-editar')); return; }
+      if (ed) {
+        editarManual(ed.getAttribute('data-man-editar'), ed.getAttribute('data-man-mov'));
+        return;
+      }
       var ex = e.target.closest('[data-man-excluir]');
       if (ex) {
+        if (!exigirAdmin('Somente o Admin pode excluir registros.')) return;
         var id = ex.getAttribute('data-man-excluir');
         if (!confirm('Excluir este registro manual?')) return;
         docDelete('acessos', id).then(function () {
