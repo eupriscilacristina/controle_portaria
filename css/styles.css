@@ -1580,3 +1580,16 @@ table.espelho {
   font-size: 13px;
   text-align: center;
 }
+
+.mes-nota {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.mes-divisor:has(.mes-nota)::after {
+  order: 3;
+}

@@ -1212,6 +1212,19 @@
     return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
   }
 
+  function limitesDoMes(ref) {
+    var primeiro = new Date(ref.getFullYear(), ref.getMonth(), 1);
+    var ultimo = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
+    return { de: primeiro > MAN_INI ? primeiro : MAN_INI, ate: ultimo };
+  }
+
+  function diasVisiveis(semana, ref) {
+    var lim = limitesDoMes(ref);
+    return semana.filter(function (d) {
+      return d >= lim.de && d <= lim.ate;
+    });
+  }
+
   function manPessoas() {
     var mapa = {};
     manFiltrados().forEach(function (a) {
@@ -1404,23 +1417,26 @@
     if (rotulo) rotulo.textContent = rotuloMes(state.manMesRef);
 
     var ref = state.manMesRef;
-    var ultimo = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
-    var html = '<div class="mes-divisor"><span>' + rotuloMes(ref) + '</span></div>';
-    var blocos = 0;
+    var lim = limitesDoMes(ref);
 
+    var cab = '<div class="mes-divisor"><span>' + rotuloMes(ref) + '</span>' +
+      (lim.de > new Date(ref.getFullYear(), ref.getMonth(), 1)
+        ? '<span class="mes-nota">a partir de ' + rotuloData(lim.de) + '</span>' : '') +
+      '</div>';
+
+    var corpo = '';
+    var blocos = 0;
     semanasDoMes(ref).forEach(function (dias) {
-      var vis = dias.filter(function (d) {
-        return d >= MAN_INI && d <= ultimo;
-      });
+      var vis = diasVisiveis(dias, ref);
       if (!vis.length) return;
       blocos++;
-      html += blocoSemana(vis, mesmoDia(dias[0], segundaDaSemana(hoje)));
+      corpo += blocoSemana(vis, mesmoDia(dias[0], segundaDaSemana(hoje)));
     });
 
     if (!blocos) {
-      html += '<p class="semana-vazia-bloco">O registro começa em ' + rotuloData(MAN_INI) + '.</p>';
+      corpo = '<p class="semana-vazia-bloco">O registro começa em ' + rotuloData(MAN_INI) + '.</p>';
     }
-    cont.innerHTML = html;
+    cont.innerHTML = cab + corpo;
 
     var contagem = $('#manContagem');
     if (contagem) {
@@ -1570,10 +1586,9 @@
 
   function exportarManualCsv() {
     var ref = state.manMesRef;
-    var ultimo = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
     var linhas = [];
     semanasDoMes(ref).forEach(function (dias) {
-      var vis = dias.filter(function (d) { return d >= MAN_INI && d <= ultimo; });
+      var vis = diasVisiveis(dias, ref);
       if (!vis.length) return;
       var head = ['Semana ' + rotuloData(vis[0]) + ' a ' + rotuloData(vis[vis.length - 1])];
       vis.forEach(function (d) {
