@@ -1376,31 +1376,39 @@ table.espelho {
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.07);
 }
 
-.celula-input.c-nome {
-  font-weight: 600;
-  min-width: 150px;
-  color: #334155;
-}
-
-.celula-input.c-funcao,
-.celula-input.c-empresa {
-  color: #334155;
-  min-width: 110px;
-}
-
+/* texto do Registro manual: Nome, Funcao e Empresa visualmente identicos */
 .celula-input.c-nome,
 .celula-input.c-funcao,
 .celula-input.c-empresa {
-  font-weight: 600;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: normal;
+  text-transform: none;
   color: #334155;
   background: transparent;
+  -webkit-text-fill-color: #334155;
+  opacity: 1;
+}
+
+.celula-input.c-nome {
+  min-width: 150px;
+}
+
+.celula-input.c-funcao,
+.celula-input.c-empresa {
+  min-width: 110px;
 }
 
 .celula-input.c-nome::placeholder,
 .celula-input.c-funcao::placeholder,
 .celula-input.c-empresa::placeholder {
   color: #94a3b8;
-  font-weight: 400;
+  -webkit-text-fill-color: #94a3b8;
+  font-weight: 500;
+  opacity: 1;
 }
 
 .espelho td.pessoa .celula-input.c-nome,
@@ -1486,12 +1494,12 @@ table.espelho {
 }
 
 .espelho th.dia-col.hoje {
-  background: var(--brand);
-  color: #fff;
+  background: #f97316;
+  color: #ffffff;
 }
 
 .espelho th.dia-col.hoje b {
-  color: #fff;
+  color: #ffffff;
 }
 
 .espelho th.rot-e,
@@ -1841,4 +1849,12 @@ table.espelho {
   .btn.lg {
     padding: 11px 14px;
   }
+}
+
+/* impede que a cor da celula contamine os campos de texto */
+.espelho td.pessoa .celula-input,
+.espelho td.sub .celula-input {
+  color: #334155;
+  -webkit-text-fill-color: #334155;
+  font-weight: 500;
 }
