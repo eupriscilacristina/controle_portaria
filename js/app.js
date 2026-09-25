@@ -737,7 +737,7 @@
       head1 += '<th colspan="2">' + DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] +
         ' ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '</th>';
     });
-    if (ehAdmin()) head1 += '<th rowspan="2">Excluir</th>';
+    if (ehAdmin()) head1 += '<th rowspan="2" class="excluir-col">Excluir</th>';
     head1 += '</tr>';
     var head2 = '<tr>';
     dias.forEach(function () {
@@ -763,7 +763,7 @@
         corpo += '<td class="hora' + (d.s ? ' s' : ' vazio') + '">' + (d.s || '·') + '</td>';
       });
       if (ehAdmin()) {
-        corpo += '<td class="nowrap">' + (r.ids.length
+        corpo += '<td class="excluir-col">' + (r.ids.length
           ? '<button type="button" class="btn danger sm" data-act="excluirSemana" data-ids="' +
             esc(r.ids.filter(function (v, i, s2) { return s2.indexOf(v) === i; }).join(',')) +
             '" data-nome="' + esc(r.nome) + '">Excluir</button>'

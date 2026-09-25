@@ -1416,8 +1416,6 @@ table.espelho {
 }
 
 
-
-
 .movement-help {
   color: #64748b;
   font-size: 13px;
@@ -1425,18 +1423,8 @@ table.espelho {
 }
 
 
-
-
-
-
-
-
-
-.espelho td.hora,
-.espelho th.dia-col,
-
-.espelho td.pessoa,
-.espelho th.pessoa {
+.semana-bloco .espelho td.pessoa,
+.semana-bloco .espelho th.pessoa {
   position: sticky;
   left: 0;
   z-index: 3;
@@ -1444,7 +1432,7 @@ table.espelho {
   min-width: 170px;
 }
 
-.espelho thead th.pessoa {
+.semana-bloco .espelho thead th.pessoa {
   z-index: 5;
   background: #f1f5f9;
 }
@@ -1543,7 +1531,6 @@ table.espelho {
 }
 
 
-
 .mes-divisor {
   display: flex;
   align-items: center;
@@ -1573,7 +1560,6 @@ table.espelho {
 }
 
 
-
 .semana-vazia-bloco {
   padding: 18px;
   color: #94a3b8;
@@ -1592,4 +1578,35 @@ table.espelho {
 
 .mes-divisor:has(.mes-nota)::after {
   order: 3;
+}
+
+#tabelaSemanal td.hora,
+#tabelaSemanal th {
+  min-width: 46px;
+}
+
+#tabelaSemanal td.pessoa {
+  min-width: 170px;
+}
+
+#tabelaSemanal td.sub {
+  min-width: 110px;
+  max-width: 160px;
+}
+
+#tabelaSemanal .excluir-col,
+#tabelaSemanal th.excluir-col {
+  min-width: 82px;
+  max-width: 82px;
+  width: 82px;
+  text-align: center;
+  background: #f7f8fa;
+}
+
+#tabelaSemanal thead tr:first-child th.excluir-col {
+  background: var(--grad-preto);
+}
+
+#tabelaSemanal tbody tr:hover td.excluir-col {
+  background: #f7f8fa;
 }
