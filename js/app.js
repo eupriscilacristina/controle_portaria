@@ -12,7 +12,7 @@
     filtros: { q: '', data: '', status: 'todos' },
     semanaRef: new Date(),
     semanaFiltros: { q: '', empresa: '', obra: '' },
-    manSemanaRef: new Date(),
+    manMesRef: new Date(),
     manNovo: { nome: '', funcao: '', empresa: '' }
   };
 
@@ -619,6 +619,22 @@
     return dias;
   }
 
+  function diasDoMes(ref) {
+    var ano = ref.getFullYear();
+    var mes = ref.getMonth();
+    var total = new Date(ano, mes + 1, 0).getDate();
+    var dias = [];
+    for (var i = 1; i <= total; i++) dias.push(new Date(ano, mes, i));
+    return dias;
+  }
+
+  function rotuloMes(ref) {
+    var f = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
+      'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    var m = f[ref.getMonth()] || '';
+    return m.charAt(0).toUpperCase() + m.slice(1) + ' / ' + ref.getFullYear();
+  }
+
   function mesmoDia(a, b) {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   }
@@ -1185,9 +1201,9 @@
   }
 
   function manLinhas() {
-    var dias = diasDaSemana(state.manSemanaRef);
+    var dias = diasDoMes(state.manMesRef);
     var inicio = dias[0];
-    var fim = dias[6];
+    var fim = dias[dias.length - 1];
     var mapa = {};
     var ordem = [];
 
@@ -1211,7 +1227,7 @@
       var te = toDate(a.dataEntrada);
       var ts = toDate(a.dataSaida);
       if (te && dentroDoIntervalo(te, inicio, fim)) {
-        for (var i = 0; i < 7; i++) {
+        for (var i = 0; i < dias.length; i++) {
           if (mesmoDia(te, dias[i])) {
             var hE = pad(te.getHours()) + ':' + pad(te.getMinutes());
             if (!row.dias[i].e || hE < row.dias[i].e.hora) {
@@ -1222,7 +1238,7 @@
         }
       }
       if (ts && dentroDoIntervalo(ts, inicio, fim)) {
-        for (var j = 0; j < 7; j++) {
+        for (var j = 0; j < dias.length; j++) {
           if (mesmoDia(ts, dias[j])) {
             var hS = pad(ts.getHours()) + ':' + pad(ts.getMinutes());
             if (!row.dias[j].s || hS > row.dias[j].s.hora) {
@@ -1282,14 +1298,10 @@
   function renderManual() {
     var tabela = $('#tabelaManual');
     if (!tabela) return;
-    var dias = diasDaSemana(state.manSemanaRef);
-    var ini = dias[0];
-    var fim = dias[6];
-    var rotulo = $('#manSemanaLabel');
-    if (rotulo) {
-      rotulo.textContent = pad(ini.getDate()) + '/' + pad(ini.getMonth() + 1) + ' a ' +
-        pad(fim.getDate()) + '/' + pad(fim.getMonth() + 1) + '/' + fim.getFullYear();
-    }
+    var dias = diasDoMes(state.manMesRef);
+    var hoje = new Date();
+    var rotulo = $('#manMesLabel');
+    if (rotulo) rotulo.textContent = rotuloMes(state.manMesRef);
 
     var linhas = manLinhas();
     var comMov = linhas.filter(function (r) {
@@ -1302,19 +1314,21 @@
       '<th class="pessoa" rowspan="2">Nome Completo</th>' +
       '<th class="sub" rowspan="2">Função</th>' +
       '<th class="sub" rowspan="2">Empresa</th>';
+    var head2 = '<tr>';
     dias.forEach(function (d) {
-      head1 += '<th colspan="2">' + DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] +
-        ' ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '</th>';
+      var fds = d.getDay() === 0 || d.getDay() === 6;
+      var ehHoje = mesmoDia(d, hoje);
+      var cls = 'dia-col' + (fds ? ' fds' : '') + (ehHoje ? ' hoje' : '');
+      head1 += '<th class="' + cls + '" colspan="2"><b>' + d.getDate() + '</b> ' +
+        DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + '</th>';
+      head2 += '<th class="' + cls + ' rot-e' + (fds ? ' fds' : '') + '">E</th>' +
+        '<th class="' + cls + ' rot-s' + (fds ? ' fds' : '') + '">S</th>';
     });
     if (ehAdmin()) head1 += '<th rowspan="2">Excluir</th>';
     head1 += '</tr>';
-    var head2 = '<tr>';
-    dias.forEach(function () {
-      head2 += '<th>E</th><th>S</th>';
-    });
     head2 += '</tr>';
 
-    var cols = 3 + 14 + (ehAdmin() ? 1 : 0);
+    var cols = 3 + dias.length * 2 + (ehAdmin() ? 1 : 0);
     var corpo = '';
     var ultimaEmpresa = null;
     linhas.forEach(function (r) {
@@ -1342,7 +1356,7 @@
 
     if (!linhas.length) {
       corpo = '<tr><td colspan="' + cols + '" style="padding:20px;color:#64748b">' +
-        'Nenhum registro nesta semana. Digite o nome na linha acima e a hora na coluna do dia.</td></tr>';
+        'Nenhum registro neste mês. Digite o nome na primeira linha e a hora na coluna do dia.</td></tr>';
     }
 
     tabela.innerHTML = '<thead>' + head1 + head2 + '</thead><tbody>' +
@@ -1490,11 +1504,10 @@
   }
 
   function exportarManualCsv() {
-    var dias = diasDaSemana(state.manSemanaRef);
+    var dias = diasDoMes(state.manMesRef);
     var head = ['Nome Completo', 'Funcao', 'Empresa'];
     dias.forEach(function (d) {
-      var lbl = DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + ' ' +
-        pad(d.getDate()) + '/' + pad(d.getMonth() + 1);
+      var lbl = pad(d.getDate()) + '/' + pad(d.getMonth() + 1);
       head.push(lbl + ' E');
       head.push(lbl + ' S');
     });
@@ -1607,16 +1620,16 @@
     $('#listaPessoasList').addEventListener('click', onListaClick);
 
     $('#btnManExportar').addEventListener('click', exportarManualCsv);
-    $('#manSemanaAnterior').addEventListener('click', function () {
-      state.manSemanaRef = new Date(state.manSemanaRef.getTime() - 7 * 86400000);
+    $('#manMesAnterior').addEventListener('click', function () {
+      state.manMesRef = new Date(state.manMesRef.getFullYear(), state.manMesRef.getMonth() - 1, 1);
       renderManual();
     });
-    $('#manSemanaProxima').addEventListener('click', function () {
-      state.manSemanaRef = new Date(state.manSemanaRef.getTime() + 7 * 86400000);
+    $('#manMesProximo').addEventListener('click', function () {
+      state.manMesRef = new Date(state.manMesRef.getFullYear(), state.manMesRef.getMonth() + 1, 1);
       renderManual();
     });
-    $('#manSemanaAtual').addEventListener('click', function () {
-      state.manSemanaRef = new Date();
+    $('#manMesAtual').addEventListener('click', function () {
+      state.manMesRef = new Date();
       renderManual();
     });
     $('#tabelaManual').addEventListener('input', function (e) {

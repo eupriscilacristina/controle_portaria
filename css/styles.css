@@ -1431,3 +1431,82 @@ table.espelho {
   font-size: 13px;
   margin: 0 0 8px;
 }
+
+.espelho th.dia-col {
+  text-align: center;
+  min-width: 78px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.espelho th.dia-col b {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.espelho th.dia-col.fds {
+  background: #eef2f7;
+  color: #64748b;
+}
+
+.espelho th.dia-col.hoje {
+  background: var(--brand);
+  color: #fff;
+}
+
+.espelho th.rot-e,
+.espelho th.rot-s {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+  min-width: 34px;
+}
+
+.espelho th.rot-e.fds,
+.espelho th.rot-s.fds {
+  background: #e6ebf2;
+  color: #94a3b8;
+}
+
+.espelho-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: 72vh;
+}
+
+.espelho {
+  min-width: max-content;
+}
+
+.espelho td.hora,
+.espelho th.dia-col,
+.espelho th.rot-e,
+.espelho th.rot-s {
+  width: 34px;
+  min-width: 34px;
+}
+
+.espelho td.pessoa,
+.espelho th.pessoa {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #fff;
+  min-width: 170px;
+}
+
+.espelho thead th.pessoa {
+  z-index: 5;
+  background: #f1f5f9;
+}
+
+.espelho .grupo-empresa td.pessoa {
+  background: #e8eef6;
+  font-weight: 700;
+  color: #334155;
+}
+
+.espelho .nova-linha td.pessoa {
+  background: #f8fafc;
+}
