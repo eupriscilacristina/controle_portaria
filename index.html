@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Controle de acesso de veículos e pessoas para condomínios">
+  <title>Portaria · Controle de Acesso</title>
+  <link rel="icon" href="INC-Empreendimentos-1024x347.jpeg" type="image/jpeg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="bg-tech" aria-hidden="true"></div>
+
+  <div class="login-screen" id="loginScreen">
+    <form class="form-login" id="loginForm">
+      <div class="login-logo">
+        <img src="INC-Empreendimentos-1024x347.jpeg" alt="INC Empreendimentos">
+      </div>
+      <h1>Controle de Portaria</h1>
+      <p class="login-sub">Área restrita — autentique-se para continuar</p>
+      <label class="login-label" for="loginEmail">E-mail</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="Digite seu e-mail" required>
+      <label class="login-label" for="loginSenha">Senha</label>
+      <input id="loginSenha" type="password" autocomplete="current-password" placeholder="Digite sua senha" required>
+      <button type="submit" class="btn primary lg" id="loginBtn">Entrar</button>
+      <button type="button" class="btn ghost lg" id="loginLocal" hidden>Usar modo local</button>
+      <p class="login-erro" id="loginErro" role="alert"></p>
+    </form>
+  </div>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-icon">
+          <img class="brand-logo" src="INC-Empreendimentos-1024x347.jpeg" alt="INC Empreendimentos">
+        </span>
+        <div class="brand-text">
+          <h1>Controle de Portaria</h1>
+          <p id="brandSub">Entrada e saída de veículos e pessoas</p>
+        </div>
+      </div>
+      <div class="side-right">
+        <div class="relogio" aria-live="off">
+          <span id="relogioHora">--:--:--</span>
+          <span id="relogioData">—</span>
+        </div>
+        <div class="conn off" id="statusConexao"><span class="dot"></span> Verificando…</div>
+        <button type="button" class="btn ghost sm sair-btn" id="btnSair" hidden>Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="demo-banner" id="demoBanner" hidden>
+    <span>Modo demonstração — os dados ficam apenas neste dispositivo. Configure o Firebase em <code>js/firebase-config.js</code> para salvar na nuvem.</span>
+    <button type="button" class="banner-close" id="bannerFechar" aria-label="Fechar aviso">✕</button>
+  </div>
+
+  <main class="container">
+    <section class="stats">
+      <div class="stat">
+        <div class="stat-icon s-indigo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="stat-text">
+          <strong class="stat-value" id="statDentro">0</strong>
+          <span class="stat-label">Dentro agora</span>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon s-emerald">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        </div>
+        <div class="stat-text">
+          <strong class="stat-value" id="statEntradas">0</strong>
+          <span class="stat-label">Entradas hoje</span>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon s-sky">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </div>
+        <div class="stat-text">
+          <strong class="stat-value" id="statSaidas">0</strong>
+          <span class="stat-label">Saídas hoje</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab active" id="tab-registrar">
+      <div class="card">
+        <div class="card-head">
+          <h2>Registrar entrada</h2>
+          <p>Selecione o tipo, preencha os dados e confirme. Data e hora são gravadas automaticamente.</p>
+        </div>
+
+        <div class="segment" role="group" aria-label="Tipo de registro">
+          <button type="button" class="seg-btn active" data-tipo="veiculo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Veículo
+          </button>
+          <button type="button" class="seg-btn" data-tipo="pessoa">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Pessoa
+          </button>
+        </div>
+
+        <form id="formEntrada" class="form-grid" autocomplete="off">
+          <div class="field">
+            <label for="regNome">Nome completo / Motorista *</label>
+            <input id="regNome" maxlength="120" required placeholder="Ex.: Nome completo">
+          </div>
+          <div class="field grupo-pessoa" hidden>
+            <label for="regFuncao">Função</label>
+            <input id="regFuncao" maxlength="80" placeholder="Ex.: Pedreiro, Encarregado…">
+          </div>
+          <div class="field">
+            <label for="regEmpresa">Empresa</label>
+            <input id="regEmpresa" maxlength="120" placeholder="Ex.: Empresa Ltda.">
+          </div>
+          <div class="field grupo-pessoa" hidden>
+            <label for="regTipoDoc">Tipo de documento</label>
+            <select id="regTipoDoc">
+              <option value="cpf">CPF</option>
+              <option value="rg">RG</option>
+              <option value="cnh">CNH</option>
+            </select>
+          </div>
+          <div class="field grupo-pessoa" hidden>
+            <label for="regCpf">Documento (opcional)</label>
+            <input id="regCpf" maxlength="14" inputmode="text" placeholder="000.000.000-00">
+          </div>
+          <div class="field grupo-veiculo">
+            <label for="regTipoVeiculo">Tipo do veículo</label>
+            <select id="regTipoVeiculo">
+              <option>Carro</option>
+              <option>Moto</option>
+              <option>Caminhonete</option>
+              <option>Van / Ônibus</option>
+              <option>Bicicleta</option>
+              <option>Outro</option>
+            </select>
+          </div>
+          <div class="field grupo-veiculo">
+            <label for="regPlaca">Placa do veículo *</label>
+            <input id="regPlaca" class="uppercase" maxlength="8" placeholder="ABC-1234 ou ABC1D23">
+          </div>
+          <div class="field">
+            <label for="regObra">Obra / Local</label>
+            <input id="regObra" maxlength="120" placeholder="Ex.: Obra A">
+          </div>
+          <div class="field">
+            <label for="regAtividade">Atividade</label>
+            <input id="regAtividade" maxlength="80" placeholder="Ex.: Fornecedor, entrega, visita…">
+          </div>
+          <div class="field full form-actions">
+            <button type="submit" class="btn primary lg" id="btnRegistrar">Registrar entrada</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-dentro">
+      <div class="section-head">
+        <div>
+          <h2>Pessoas no local</h2>
+          <p id="dentroContagem">0 registros ativos</p>
+        </div>
+      </div>
+      <div class="list" id="listaDentro"></div>
+    </section>
+
+    <section class="tab" id="tab-semanal">
+      <div class="section-head">
+        <div>
+          <h2>Espelho semanal</h2>
+          <p id="semanalContagem">Entrada e saída por dia — igual à planilha</p>
+        </div>
+        <button type="button" class="btn ghost sm" id="btnExportarSemana">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar CSV
+        </button>
+      </div>
+      <div class="semana-bar">
+        <button type="button" class="btn ghost sm" id="semanaAnterior">← Semana anterior</button>
+        <div class="semana-info">
+          <strong id="semanaLabel">—</strong>
+          <button type="button" class="btn sm semana-hoje" id="semanaAtual">Semana atual</button>
+        </div>
+        <button type="button" class="btn ghost sm" id="semanaProxima">Próxima semana →</button>
+      </div>
+      <div class="card filters filtros-semana">
+        <div class="field">
+          <label for="semQ">Buscar pessoa</label>
+          <input id="semQ" placeholder="Nome ou função">
+        </div>
+        <div class="field">
+          <label for="semEmpresa">Empresa</label>
+          <select id="semEmpresa">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="semObra">Obra / Local</label>
+          <select id="semObra">
+            <option value="">Todas</option>
+            <option>Obra A</option>
+            <option>Obra B</option>
+          </select>
+        </div>
+      </div>
+      <div class="espelho-wrap">
+        <table class="espelho" id="tabelaSemanal"></table>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-historico">
+      <div class="section-head">
+        <div>
+          <h2>Histórico de acessos</h2>
+          <p id="histContagem">0 registros</p>
+        </div>
+        <button type="button" class="btn ghost sm" id="btnExportar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar CSV
+        </button>
+      </div>
+      <div class="card cal-card">
+        <div class="cal-top">
+          <div class="field cal-field">
+            <label for="calData">Consultar por data (calendário)</label>
+            <input id="calData" type="date">
+          </div>
+          <button type="button" class="btn ghost sm" id="calHoje">Hoje</button>
+        </div>
+        <div class="cal-stats">
+          <div class="cal-stat">
+            <strong class="stat-value" id="calSemana">0</strong>
+            <span class="stat-label">Acessos na semana</span>
+          </div>
+          <div class="cal-stat">
+            <strong class="stat-value" id="calMes">0</strong>
+            <span class="stat-label">Acessos no mês</span>
+          </div>
+        </div>
+      </div>
+      <div class="card filters">
+        <div class="field">
+          <label for="filtQ">Buscar</label>
+          <input id="filtQ" placeholder="Nome, placa, empresa ou CPF">
+        </div>
+        <div class="field">
+          <label for="filtData">Data</label>
+          <input id="filtData" type="date">
+        </div>
+        <div class="field">
+          <label for="filtStatus">Status</label>
+          <select id="filtStatus">
+            <option value="todos">Todos</option>
+            <option value="dentro">Dentro agora</option>
+            <option value="fora">Concluídos</option>
+          </select>
+        </div>
+      </div>
+      <div class="list" id="listaHistorico"></div>
+    </section>
+
+    <section class="tab" id="tab-pessoas">
+      <div class="card">
+        <div class="card-head">
+          <h2 id="pessoasTitulo">Cadastrar pessoa</h2>
+          <p>Registro de pessoas físicas (função, telefone, empresa e perfil).</p>
+        </div>
+        <form id="formPessoa" class="form-grid" autocomplete="off">
+          <div class="field">
+            <label for="pesNome">Nome completo *</label>
+            <input id="pesNome" maxlength="120" required placeholder="Ex.: João da Silva">
+          </div>
+          <div class="field">
+            <label for="pesFuncao">Função</label>
+            <input id="pesFuncao" maxlength="80" placeholder="Ex.: Pedreiro, Armador…">
+          </div>
+          <div class="field">
+            <label for="pesTipoDoc">Tipo de documento</label>
+            <select id="pesTipoDoc">
+              <option value="cpf">CPF</option>
+              <option value="rg">RG</option>
+              <option value="cnh">CNH</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="pesCpf">Documento (opcional)</label>
+            <input id="pesCpf" maxlength="14" inputmode="text" placeholder="000.000.000-00">
+          </div>
+          <div class="field">
+            <label for="pesTelefone">Telefone</label>
+            <input id="pesTelefone" maxlength="15" inputmode="tel" placeholder="(00) 00000-0000">
+          </div>
+          <div class="field">
+            <label for="pesEmpresa">Empresa / Vínculo</label>
+            <input id="pesEmpresa" maxlength="120" placeholder="Ex.: Zeladoria">
+          </div>
+          <div class="field">
+            <label for="pesTipo">Perfil</label>
+            <select id="pesTipo">
+              <option>Morador</option>
+              <option>Visitante</option>
+              <option>Fornecedor</option>
+              <option>Prestador de serviço</option>
+            </select>
+          </div>
+          <div class="field form-actions">
+            <button type="submit" class="btn primary lg" id="btnPessoaSalvar">Cadastrar pessoa</button>
+          </div>
+          <div class="field full">
+            <button type="button" class="btn ghost lg" id="btnPessoaCancelar" hidden>Cancelar edição</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="section-head">
+        <div>
+          <h2>Pessoas cadastradas</h2>
+          <p id="pessoasContagem">0 pessoas</p>
+        </div>
+        <button type="button" class="btn ghost sm" id="btnImportar" hidden>Importar base da planilha</button>
+      </div>
+      <div class="search-box">
+        <input id="pessoasBusca" placeholder="Buscar por nome, CPF ou empresa">
+      </div>
+      <div class="list" id="listaPessoasList"></div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Navegação principal">
+    <button type="button" class="nav-btn active" data-tab="registrar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      <span>Registrar</span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="dentro">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Dentro</span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="semanal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Semanal</span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="historico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>Histórico</span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="pessoas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+      <span>Pessoas</span>
+    </button>
+  </nav>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="js/firebase-config.js?v=4"></script>
+  <script defer src="js/base-planilha.js?v=4"></script>
+  <script defer src="js/app.js?v=4"></script>
+</body>
+</html>
