@@ -1351,38 +1351,34 @@
   }
 
   function entrar() {
-    var email = ($('#loginEmail').value || '').trim();
+    var usuario = ($('#loginEmail').value || '').trim().toLowerCase();
     var senha = $('#loginSenha').value;
-    var btn = $('#loginBtn');
 
-    if (!auth) {
-      $('#loginErro').textContent = 'Firebase não configurado. Use o modo local ou configure o projeto.';
-      return;
-    }
-    if (!email || !senha) {
-      $('#loginErro').textContent = 'Informe e-mail e senha.';
+    if (usuario === 'admin' && senha === '4080') {
+      state.sessao = { usuario: 'admin' };
+      $('#loginErro').textContent = '';
+      abrirApp();
       return;
     }
 
-    $('#loginErro').textContent = '';
-    btn.disabled = true;
-    btn.textContent = 'Entrando…';
-    auth.signInWithEmailAndPassword(email, senha).catch(function (error) {
-      $('#loginErro').textContent = authErrorMessage(error);
-    }).finally(function () {
-      btn.disabled = false;
-      btn.textContent = 'Entrar';
-    });
+    if (usuario === 'portaria' && senha === '1234') {
+      state.sessao = { usuario: 'portaria' };
+      $('#loginErro').textContent = '';
+      abrirApp();
+      return;
+    }
+
+    $('#loginErro').textContent = 'Usuário ou senha incorretos.';
   }
 
   function abrirSessaoCloud(user) {
-    state.sessao = { email: user.email || '' };
+    state.sessao = { usuario: 'portaria' };
     abrirApp();
   }
 
   function entrarLocal() {
     if (useCloud) return;
-    state.sessao = { email: 'local' };
+    state.sessao = { usuario: 'admin' };
     abrirApp();
   }
 
