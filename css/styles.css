@@ -1513,7 +1513,6 @@ table.espelho {
 
 .semana-bloco .espelho thead th.pessoa {
   z-index: 5;
-  background: #f1f5f9;
 }
 
 .espelho .grupo-empresa td.pessoa {
@@ -1916,4 +1915,14 @@ table.espelho {
 
 .espelho .grupo-empresa td.pessoa {
   background: #e8eef6;
+}
+
+/* cabecalho Nome igual ao de Funcao e Empresa: fundo preto, letras brancas */
+.semana-bloco .espelho thead th.pessoa,
+.espelho thead th.pessoa,
+.espelho thead tr:first-child th.pessoa,
+.espelho thead tr:first-child th.sub {
+  background: var(--grad-preto);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
 }
