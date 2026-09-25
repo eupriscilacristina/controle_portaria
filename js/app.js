@@ -1593,9 +1593,9 @@
       dataSaida: mov === 's' ? iso : null,
       status: mov === 'e' ? 'dentro' : 'fora'
     }).then(function () {
-      state.manNovo.nome = nome;
-      state.manNovo.empresa = (campoEmpresa.value || '').trim();
-      state.manNovo.funcao = (campoFuncao.value || '').trim();
+      state.manNovo.nome = '';
+      state.manNovo.empresa = '';
+      state.manNovo.funcao = '';
       toast(mov === 'e' ? 'Entrada registrada' : 'Saída registrada');
     }).catch(function (err) {
       console.error(err);

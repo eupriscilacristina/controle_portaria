@@ -1429,9 +1429,26 @@ table.espelho {
 .celula-input.c-nome::placeholder,
 .celula-input.c-funcao::placeholder,
 .celula-input.c-empresa::placeholder {
-  color: #94a3b8;
-  -webkit-text-fill-color: #94a3b8;
-  font-weight: 500;
+  color: #6b7280;
+  -webkit-text-fill-color: #6b7280;
+  font-weight: 600;
+  font-size: 12.5px;
+  line-height: 1.3;
+  opacity: 1;
+}
+
+/* a linha de cadastro mantem os tres campos com o mesmo tom */
+.nova-linha .celula-input.c-nome,
+.nova-linha .celula-input.c-funcao,
+.nova-linha .celula-input.c-empresa,
+.nova-linha .celula-input.c-nome::placeholder,
+.nova-linha .celula-input.c-funcao::placeholder,
+.nova-linha .celula-input.c-empresa::placeholder {
+  color: #334155;
+  -webkit-text-fill-color: #334155;
+  font-weight: 600;
+  font-size: 12.5px;
+  line-height: 1.3;
   opacity: 1;
 }
 
