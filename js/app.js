@@ -12,7 +12,8 @@
     filtros: { q: '', data: '', status: 'todos' },
     semanaRef: new Date(),
     semanaFiltros: { q: '', empresa: '', obra: '' },
-    manMesRef: new Date(),
+    manSemanaRef: segundaDaSemana(new Date()),
+    manQtdSemanas: 8,
     manNovo: { nome: '', funcao: '', empresa: '' },
     manPessoas: {}
   };
@@ -1185,18 +1186,8 @@
     return manItens();
   }
 
-  function semanasDoMes(ref) {
-    var ano = ref.getFullYear();
-    var mes = ref.getMonth();
-    var ultimo = new Date(ano, mes + 1, 0);
-    var ini = segundaDaSemana(new Date(ano, mes, 1));
-    var semanas = [];
-    for (var i = 0; ; i++) {
-      var d = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate() + i * 7);
-      if (d > ultimo) break;
-      semanas.push(diasDaSemana(d));
-    }
-    return semanas;
+  function semanaEm(inicio, n) {
+    return diasDaSemana(new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + n * 7));
   }
 
   function rotuloMes(ref) {
@@ -1204,10 +1195,6 @@
       'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
     var m = f[ref.getMonth()] || '';
     return m.charAt(0).toUpperCase() + m.slice(1) + ' / ' + ref.getFullYear();
-  }
-
-  function mesmoMes(d, ref) {
-    return d.getMonth() === ref.getMonth() && d.getFullYear() === ref.getFullYear();
   }
 
   function manPessoas() {
@@ -1335,9 +1322,7 @@
     var head2 = '<tr>';
     var hoje = new Date();
     dias.forEach(function (d) {
-      var cls = 'dia-col';
-      if (!mesmoMes(d, state.manMesRef)) cls += ' fora';
-      else if (mesmoDia(d, hoje)) cls += ' hoje';
+      var cls = 'dia-col' + (mesmoDia(d, hoje) ? ' hoje' : '');
       head1 += '<th class="' + cls + '" colspan="2"><b>' + d.getDate() + '</b> ' +
         DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + '</th>';
       head2 += '<th class="' + cls + ' rot-e">E</th><th class="' + cls + ' rot-s">S</th>';
@@ -1349,7 +1334,6 @@
   function blocoSemana(dias, ehAtual) {
     var ini = dias[0];
     var fim = dias[6];
-    var dentro = dias.filter(function (d) { return mesmoMes(d, state.manMesRef); });
     var linhas = manLinhas(dias);
     var cols = 3 + 14 + (ehAdmin() ? 1 : 0);
     var corpo = '';
@@ -1368,9 +1352,8 @@
         '<td class="sub">' + manInput('empresa', r.empresa, who) + '</td>';
       r.dias.forEach(function (d, i) {
         var diaIso = isoDate(dias[i]);
-        var fora = mesmoMes(dias[i], state.manMesRef) ? '' : ' fora';
-        corpo += '<td class="hora e' + fora + (d.e ? '' : ' vazio') + '">' + manInputHora(d.e, r.chave, diaIso) + '</td>' +
-          '<td class="hora s' + fora + (d.s ? '' : ' vazio') + '">' + manInputHora(d.s, r.chave, diaIso) + '</td>';
+        corpo += '<td class="hora e' + (d.e ? '' : ' vazio') + '">' + manInputHora(d.e, r.chave, diaIso) + '</td>' +
+          '<td class="hora s' + (d.s ? '' : ' vazio') + '">' + manInputHora(d.s, r.chave, diaIso) + '</td>';
       });
       if (ehAdmin()) {
         corpo += '<td class="nowrap"><button type="button" class="btn danger sm" data-man-excluir="' +
@@ -1384,14 +1367,10 @@
         'Sem registros nesta semana — use a primeira linha para incluir alguém.</td></tr>';
     }
 
-    var titulo = dentro.length === 7
-      ? 'Semana de ' + pad(dentro[0].getDate()) + ' a ' + pad(dentro[6].getDate())
-      : 'Semana de ' + pad(ini.getDate()) + '/' + pad(ini.getMonth() + 1) + ' a ' +
-        pad(fim.getDate()) + '/' + pad(fim.getMonth() + 1);
-
     return '<section class="semana-bloco' + (ehAtual ? ' atual' : '') + '">' +
       '<header class="semana-head">' +
-      '<strong>' + titulo + '</strong>' +
+      '<strong>Semana de ' + pad(ini.getDate()) + '/' + pad(ini.getMonth() + 1) + ' a ' +
+      pad(fim.getDate()) + '/' + pad(fim.getMonth() + 1) + '</strong>' +
       (ehAtual ? '<span class="tag-atual">atual</span>' : '') +
       '</header>' +
       '<div class="espelho-wrap"><table class="espelho">' +
@@ -1406,23 +1385,31 @@
     manPessoas();
 
     var hoje = new Date();
-    var rotulo = $('#manMesLabel');
-    if (rotulo) rotulo.textContent = rotuloMes(state.manMesRef);
-
-    var semanas = semanasDoMes(state.manMesRef);
+    var inicio = state.manSemanaRef;
     var html = '';
-    semanas.forEach(function (dias) {
-      var ehAtual = mesmoDia(dias[0], segundaDaSemana(hoje));
-      html += blocoSemana(dias, ehAtual);
-    });
+    var mesAnterior = null;
+    var nSemanas = state.manQtdSemanas;
+
+    for (var i = 0; i < nSemanas; i++) {
+      var dias = semanaEm(inicio, i);
+      var chaveMes = dias[0].getFullYear() + '-' + dias[0].getMonth();
+      if (chaveMes !== mesAnterior) {
+        mesAnterior = chaveMes;
+        html += '<div class="mes-divisor"><span>' + rotuloMes(dias[0]) + '</span></div>';
+      }
+      html += blocoSemana(dias, mesmoDia(dias[0], segundaDaSemana(hoje)));
+    }
     cont.innerHTML = html;
 
     var contagem = $('#manContagem');
     if (contagem) {
       var totalPessoas = Object.keys(state.manPessoas || {}).length;
-      contagem.textContent = rotuloMes(state.manMesRef) + ' · ' + semanas.length +
-        ' semanas · ' + totalPessoas + ' pessoas';
+      contagem.textContent = totalPessoas + ' pessoas · ' + nSemanas + ' semanas a partir de ' +
+        pad(inicio.getDate()) + '/' + pad(inicio.getMonth() + 1);
     }
+
+    var btnMais = $('#manMaisSemanas');
+    if (btnMais) btnMais.hidden = false;
   }
 
   function manPessoa(chave) {
@@ -1566,8 +1553,8 @@
 
   function exportarManualCsv() {
     var linhas = [];
-    var semanas = semanasDoMes(state.manMesRef);
-    semanas.forEach(function (dias) {
+    for (var i = 0; i < state.manQtdSemanas; i++) {
+      var dias = semanaEm(state.manSemanaRef, i);
       var ini = dias[0];
       var fim = dias[6];
       var head = ['Semana ' + pad(ini.getDate()) + '/' + pad(ini.getMonth() + 1) + ' a ' +
@@ -1587,9 +1574,8 @@
         linhas.push(l.map(csvCell).join(';'));
       });
       linhas.push('');
-    });
-    baixarCsv('registro-manual-' + rotuloMes(state.manMesRef).replace(/[^a-z0-9]+/gi, '-') +
-      '.csv', linhas);
+    }
+    baixarCsv('registro-manual-' + isoDate(new Date()) + '.csv', linhas);
   }
 
   function bind() {
@@ -1689,16 +1675,22 @@
     $('#listaPessoasList').addEventListener('click', onListaClick);
 
     $('#btnManExportar').addEventListener('click', exportarManualCsv);
-    $('#manMesAnterior').addEventListener('click', function () {
-      state.manMesRef = new Date(state.manMesRef.getFullYear(), state.manMesRef.getMonth() - 1, 1);
+    $('#manSemanaAnterior').addEventListener('click', function () {
+      state.manSemanaRef = new Date(state.manSemanaRef.getFullYear(), state.manSemanaRef.getMonth(),
+        state.manSemanaRef.getDate() - 7);
       renderManual();
     });
-    $('#manMesProximo').addEventListener('click', function () {
-      state.manMesRef = new Date(state.manMesRef.getFullYear(), state.manMesRef.getMonth() + 1, 1);
+    $('#manSemanaProxima').addEventListener('click', function () {
+      state.manSemanaRef = new Date(state.manSemanaRef.getFullYear(), state.manSemanaRef.getMonth(),
+        state.manSemanaRef.getDate() + 7);
       renderManual();
     });
-    $('#manMesAtual').addEventListener('click', function () {
-      state.manMesRef = new Date();
+    $('#manSemanaAtual').addEventListener('click', function () {
+      state.manSemanaRef = segundaDaSemana(new Date());
+      renderManual();
+    });
+    $('#manMaisSemanas').addEventListener('click', function () {
+      state.manQtdSemanas += 4;
       renderManual();
     });
     $('#manSemanas').addEventListener('input', function (e) {

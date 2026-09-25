@@ -1542,15 +1542,32 @@ table.espelho {
   font-size: 13px;
 }
 
-.espelho th.dia-col.fora,
-.espelho th.rot-e.fora,
-.espelho th.rot-s.fora {
-  background: #f1f5f9;
-  color: #94a3b8;
-  opacity: 0.65;
+
+
+.mes-divisor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 26px 0 12px;
 }
 
-.espelho td.hora.fora {
-  background: #f8fafc;
-  opacity: 0.5;
+.mes-divisor::before,
+.mes-divisor::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.mes-divisor span {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--brand);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.mes-divisor:first-child {
+  margin-top: 4px;
 }
