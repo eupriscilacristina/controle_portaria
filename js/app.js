@@ -380,7 +380,7 @@
   }
 
   function ehAdmin() {
-    return state.perfil === 'admin';
+    return !!(state.sessao && state.sessao.usuario === 'admin');
   }
 
   function exigirAdmin(mensagem) {
@@ -392,11 +392,18 @@
   function aplicarPermissoes() {
     var admin = ehAdmin();
     var rotulo = $('#sessaoRotulo');
-    rotulo.textContent = admin ? 'Admin' : 'Portaria';
-    rotulo.classList.toggle('admin', admin);
-    rotulo.hidden = !state.sessao;
-    $('#pessoasAdmin').hidden = !admin;
-    $('#pessoasBusca').hidden = !admin;
+    if (rotulo) {
+      rotulo.textContent = admin ? 'Admin' : 'Portaria';
+      rotulo.classList.toggle('admin', admin);
+      rotulo.hidden = !state.sessao;
+    }
+    var pa = $('#pessoasAdmin');
+    if (pa) pa.hidden = !admin;
+    var pb = $('#pessoasBusca');
+    if (pb) pb.hidden = !admin;
+    var nav = $('#navPessoas');
+    if (nav) nav.hidden = !admin;
+    if (!admin && state.tab === 'pessoas') setTab('registrar');
   }
 
   function animarNumero(el, novo) {
@@ -842,6 +849,10 @@
   }
 
   function setTab(name) {
+    if (name === 'pessoas' && !ehAdmin()) {
+      toast('Acesso restrito ao Admin.', 'erro');
+      name = 'registrar';
+    }
     state.tab = name;
     $$('.tab').forEach(function (s) {
       s.classList.toggle('active', s.id === 'tab-' + name);
@@ -1590,6 +1601,10 @@
     $('#loginErro').textContent = '';
     $('#loginLocal').hidden = !state.demo;
     $('#loginEmail').focus();
+    var r = $('#sessaoRotulo');
+    if (r) r.hidden = true;
+    var nav = $('#navPessoas');
+    if (nav) nav.hidden = true;
   }
 
   function abrirApp() {
@@ -1599,6 +1614,7 @@
     $('#loginSenha').value = '';
     $('#loginErro').textContent = '';
     $$('.nav-btn').forEach(function (b) { b.hidden = false; });
+    aplicarPermissoes();
     iniciarDados();
     setTab('registrar');
     renderAll();
