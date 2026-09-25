@@ -3,14 +3,12 @@
 
   var state = {
     tab: 'registrar',
-    movimento: 'entrada',
     tipo: 'veiculo',
     acessos: [],
     pessoas: [],
     demo: true,
     sessao: null,
     editPessoaId: null,
-    saidaBusca: '',
     filtros: { q: '', data: '', status: 'todos' },
     semanaRef: new Date(),
     semanaFiltros: { q: '', empresa: '', obra: '' },
@@ -523,30 +521,6 @@
       : '<div class="empty"><strong>Ninguém dentro agora</strong>As entradas registradas aparecem aqui.</div>';
   }
 
-  function renderSaidaManual() {
-    var ativos = state.acessos.filter(function (a) { return a.status === 'dentro'; });
-    var q = normTxt(state.saidaBusca);
-    var qSimples = q.replace(/[^a-z0-9]/g, '');
-    var itens = ativos.filter(function (a) {
-      if (!q) return true;
-      var alvo = normTxt([a.nome, a.empresa, a.funcao, a.placa, a.cpf, a.veiculo, a.obs, a.notaFiscal, a.obra, a.atividade]
-        .filter(Boolean).join(' '));
-      var alvoSimples = alvo.replace(/[^a-z0-9]/g, '');
-      return alvo.indexOf(q) >= 0 || (!!qSimples && alvoSimples.indexOf(qSimples) >= 0);
-    });
-    itens.sort(function (a, b) {
-      var ta = toDate(a.dataEntrada);
-      var tb = toDate(b.dataEntrada);
-      return (ta ? ta.getTime() : 0) - (tb ? tb.getTime() : 0);
-    });
-    $('#saidaContagem').textContent = itens.length + ' de ' + ativos.length +
-      (ativos.length === 1 ? ' registro ativo' : ' registros ativos');
-    $('#listaSaidaManual').innerHTML = itens.length
-      ? itens.map(itemDentroHTML).join('')
-      : '<div class="empty"><strong>' + (ativos.length ? 'Nenhum registro encontrado' : 'Ninguém dentro agora') + '</strong>' +
-        (ativos.length ? 'Ajuste a busca para localizar o registro.' : 'Não há entradas aguardando saída.') + '</div>';
-  }
-
   function acessosFiltrados() {
     var q = state.filtros.q.trim().toLowerCase();
     var dia = state.filtros.data;
@@ -860,7 +834,6 @@
   function renderAll() {
     renderStats();
     renderDentro();
-    renderSaidaManual();
     renderHistorico();
     renderCalendario();
     renderPessoas();
@@ -899,24 +872,6 @@
     $$('.grupo-veiculo').forEach(function (el) { el.hidden = t !== 'veiculo'; });
     $$('.grupo-pessoa').forEach(function (el) { el.hidden = t !== 'pessoa'; });
     atualizarObrigatorioPlaca();
-  }
-
-  function setMovimento(movimento) {
-    if (movimento !== 'entrada' && movimento !== 'saida') return;
-    state.movimento = movimento;
-    var entrada = movimento === 'entrada';
-    $$('[data-movimento]').forEach(function (b) {
-      var active = b.getAttribute('data-movimento') === movimento;
-      b.classList.toggle('active', active);
-      b.setAttribute('aria-pressed', active ? 'true' : 'false');
-    });
-    $('#painelEntrada').hidden = !entrada;
-    $('#painelSaida').hidden = entrada;
-    $('#movTitulo').textContent = entrada ? 'Registrar entrada' : 'Registrar saída';
-    $('#movDescricao').textContent = entrada
-      ? 'Selecione o tipo, preencha os dados e confirme. Data e hora são gravadas automaticamente.'
-      : 'Localize uma entrada ativa e finalize o registro com data e hora automáticas.';
-    if (!entrada) renderSaidaManual();
   }
 
   function registrarEntrada(ev) {
@@ -1410,12 +1365,6 @@
       });
     });
 
-    $$('[data-movimento]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        setMovimento(b.getAttribute('data-movimento'));
-      });
-    });
-
     $('#formEntrada').addEventListener('submit', registrarEntrada);
     $('#formPessoa').addEventListener('submit', salvarPessoa);
     $('#btnPessoaCancelar').addEventListener('click', limparFormPessoa);
@@ -1469,10 +1418,6 @@
       renderCalendario();
     });
     $('#pessoasBusca').addEventListener('input', renderPessoas);
-    $('#saidaBusca').addEventListener('input', function () {
-      state.saidaBusca = this.value;
-      renderSaidaManual();
-    });
 
     $('#semQ').addEventListener('input', function () {
       state.semanaFiltros.q = this.value;
@@ -1500,7 +1445,6 @@
     });
 
     $('#listaDentro').addEventListener('click', onListaClick);
-    $('#listaSaidaManual').addEventListener('click', onListaClick);
     $('#listaHistorico').addEventListener('click', onListaClick);
     $('#listaPessoasList').addEventListener('click', onListaClick);
 
@@ -1656,7 +1600,6 @@
     $('#loginErro').textContent = '';
     $$('.nav-btn').forEach(function (b) { b.hidden = false; });
     iniciarDados();
-    setMovimento('entrada');
     setTab('registrar');
     renderAll();
   }
@@ -1684,7 +1627,6 @@
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     bind();
-    setMovimento('entrada');
     setTipo('veiculo');
     $('#loginScreen').hidden = false;
     $('#loginLocal').hidden = !state.demo;
@@ -1704,7 +1646,6 @@
 
     setInterval(function () {
       if (state.tab === 'dentro') renderDentro();
-      if (state.movimento === 'saida') renderSaidaManual();
     }, 30000);
   }
 

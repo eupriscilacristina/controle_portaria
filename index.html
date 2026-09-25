@@ -93,17 +93,8 @@
     <section class="tab active" id="tab-registrar">
       <div class="card">
         <div class="card-head">
-          <h2 id="movTitulo">Registrar entrada</h2>
-          <p id="movDescricao">Selecione o tipo, preencha os dados e confirme. Data e hora são gravadas automaticamente.</p>
-        </div>
-
-        <div class="segment movement" role="group" aria-label="Movimentação">
-          <button type="button" class="seg-btn active" data-movimento="entrada" aria-pressed="true">
-            Entrada
-          </button>
-          <button type="button" class="seg-btn" data-movimento="saida" aria-pressed="false">
-            Saída
-          </button>
+          <h2>Registrar entrada</h2>
+          <p>Preencha os dados e confirme. Data e hora são gravadas automaticamente.</p>
         </div>
 
         <div id="painelEntrada">
@@ -170,16 +161,6 @@
               <button type="submit" class="btn primary lg" id="btnRegistrar">Registrar entrada</button>
             </div>
           </form>
-        </div>
-
-        <div id="painelSaida" hidden>
-          <div class="search-box">
-            <label for="saidaBusca">Buscar registro ativo</label>
-            <input id="saidaBusca" placeholder="Nome, placa, empresa ou documento">
-          </div>
-          <p class="movement-count" id="saidaContagem">0 registros ativos</p>
-          <p class="movement-help">Selecione o registro e confirme a saída. A data e hora são gravadas automaticamente.</p>
-          <div class="list movement-list" id="listaSaidaManual"></div>
         </div>
       </div>
     </section>
@@ -517,6 +498,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="js/firebase-config.js?v=4"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=34?v=6"></script>
+  <script defer src="js/app.js?v=35?v=6"></script>
 </body>
 </html>
