@@ -1765,19 +1765,6 @@
     }));
   }
 
-  function authErrorMessage(error) {
-    var mensagens = {
-      'auth/invalid-credential': 'E-mail ou senha incorretos.',
-      'auth/invalid-email': 'Informe um e-mail válido.',
-      'auth/user-disabled': 'Este usuário está desativado.',
-      'auth/user-not-found': 'E-mail ou senha incorretos.',
-      'auth/wrong-password': 'E-mail ou senha incorretos.',
-      'auth/too-many-requests': 'Muitas tentativas. Aguarde e tente novamente.',
-      'auth/network-request-failed': 'Não foi possível conectar ao Firebase.'
-    };
-    return mensagens[error && error.code] || 'Não foi possível entrar. Verifique os dados.';
-  }
-
   function entrar() {
     var usuario = ($('#loginEmail').value || '').trim().toLowerCase();
     var senha = $('#loginSenha').value;
@@ -1799,11 +1786,6 @@
     $('#loginErro').textContent = 'Usuário ou senha incorretos.';
   }
 
-  function abrirSessaoCloud(user) {
-    state.sessao = { usuario: 'portaria' };
-    abrirApp();
-  }
-
   function entrarLocal() {
     if (useCloud) return;
     state.sessao = { usuario: 'admin' };
@@ -1813,26 +1795,26 @@
   function sair() {
     var btn = $('#btnSair');
     btn.disabled = true;
-    if (auth) {
-      auth.signOut().catch(function (error) {
-        console.error(error);
-        toast('Não foi possível sair', 'erro');
-      }).finally(function () {
-        btn.disabled = false;
-      });
-      return;
+    try {
+      encerrarSessao();
+    } catch (e) {
+      console.error(e);
+      toast('Não foi possível sair', 'erro');
     }
-    encerrarSessao();
+    if (auth && auth.currentUser) {
+      auth.signOut().catch(function (error) {
+        console.warn('signOut do Firebase Auth ignorado:', error);
+      });
+    }
     btn.disabled = false;
   }
 
   function encerrarSessao() {
     pararDados();
-    if (useCloud && fs) fs.clearPersistence().catch(function () {});
     state.sessao = null;
     state.acessos = [];
     state.pessoas = [];
-    renderAll();
+    state.editPessoaId = null;
     $('#loginScreen').hidden = false;
     $('#btnSair').hidden = true;
     $('#loginSenha').value = '';
@@ -1843,6 +1825,8 @@
     if (r) r.hidden = true;
     var nav = $('#navPessoas');
     if (nav) nav.hidden = true;
+    $$('.nav-btn').forEach(function (b) { b.hidden = true; });
+    renderAll();
   }
 
   function abrirApp() {
@@ -1886,16 +1870,8 @@
     $('#loginLocal').hidden = !state.demo;
     $('#loginEmail').focus();
 
-    if (auth) {
-      auth.onAuthStateChanged(function (user) {
-        if (user) {
-          abrirSessaoCloud(user);
-        } else if (state.sessao) {
-          encerrarSessao();
-        } else if (fs) {
-          fs.clearPersistence().catch(function () {});
-        }
-      });
+    if (auth && auth.currentUser) {
+      auth.signOut().catch(function () {});
     }
 
     setInterval(function () {
