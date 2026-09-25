@@ -1377,7 +1377,7 @@
   }
 
   function abrirSessaoCloud(user) {
-    state.sessao = { email: user.email || '', uid: user.uid };
+    state.sessao = { uid: user.uid };
     state.perfil = 'portaria';
     aplicarPermissoes();
     fs.collection('administradores').doc(user.uid).get().then(function (snapshot) {
@@ -1393,7 +1393,7 @@
 
   function entrarLocal() {
     if (useCloud) return;
-    state.sessao = { email: 'local' };
+    state.sessao = { modo: 'local' };
     state.perfil = 'admin';
     aplicarPermissoes();
     abrirApp();
