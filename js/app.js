@@ -451,7 +451,8 @@
 
   function ehAdmin() {
     if (!state.sessao) return false;
-    return state.sessao.usuario === 'admin' || state.sessao.papel === 'admin';
+    return String(state.sessao.usuario || '').toLowerCase() === 'admin' ||
+      String(state.sessao.papel || '').toLowerCase() === 'admin';
   }
 
   function exigirAdmin(mensagem) {
