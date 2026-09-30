@@ -156,10 +156,18 @@ svg {
 }
 
 .login-logo img {
-  height: 64px;
+  height: 58px;
   width: auto;
   object-fit: contain;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.08));
+}
+
+.login-logo .logo-slogan {
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .form-login h1 {
