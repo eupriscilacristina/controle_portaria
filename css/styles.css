@@ -150,14 +150,24 @@ svg {
 
 .login-logo {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   margin-bottom: 14px;
 }
 
 .login-logo img {
-  height: 66px;
+  height: 58px;
   width: auto;
   object-fit: contain;
+}
+
+.login-logo .logo-slogan {
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .form-login h1 {
@@ -273,10 +283,24 @@ svg {
   -webkit-text-fill-color: transparent;
 }
 
+.brand-text .brand-slogan {
+  margin: 2px 0 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--orange);
+  white-space: nowrap;
+}
+
 .brand-text p {
   margin: 1px 0 0;
   font-size: 11px;
   color: var(--muted);
+}
+
+.brand-text .brand-slogan + p {
+  margin-top: 3px;
 }
 
 /* Relógio */
@@ -1077,7 +1101,8 @@ input::placeholder {
 }
 
 @media (max-width: 400px) {
-  .brand-text p {
+  .brand-text p,
+  .brand-text .brand-slogan {
     display: none;
   }
 
