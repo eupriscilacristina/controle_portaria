@@ -1746,7 +1746,6 @@
       ev.preventDefault();
       entrar();
     });
-    $('#loginLocal').addEventListener('click', entrarLocal);
     $('#btnSair').addEventListener('click', sair);
 
     $('#regTipoVeiculo').addEventListener('change', atualizarObrigatorioPlaca);
@@ -1921,12 +1920,6 @@
     });
   }
 
-  function entrarLocal() {
-    if (useCloud) return;
-    state.sessao = { usuario: 'admin' };
-    abrirApp();
-  }
-
   function sair() {
     var btn = $('#btnSair');
     btn.disabled = true;
@@ -1956,7 +1949,6 @@
     $('#btnSair').hidden = true;
     $('#loginSenha').value = '';
     $('#loginErro').textContent = '';
-    $('#loginLocal').hidden = !state.demo;
     $('#loginEmail').focus();
     var r = $('#sessaoRotulo');
     if (r) r.hidden = true;
@@ -2006,7 +1998,6 @@
     bind();
     setTipo('veiculo');
     $('#loginScreen').hidden = false;
-    $('#loginLocal').hidden = !state.demo;
     $('#loginEmail').focus();
 
     restaurarSessao();
