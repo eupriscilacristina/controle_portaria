@@ -1496,8 +1496,8 @@
         '<td class="pessoa">' + manInput('nome', r.nome, who) + '</td>' +
         '<td class="sub">' + manInput('funcao', r.funcao, who) + '</td>' +
         '<td class="sub">' + manInput('empresa', r.empresa, who) + '</td>' +
-        '<td class="sub">' + manInput('veiculo', r.veiculo, who) + '</td>' +
-        '<td class="sub">' + manInput('placa', r.placa, who) + '</td>';
+        '<td class="sub">' + manInput('veiculo', r.veiculo, who + ' placeholder="—"') + '</td>' +
+        '<td class="sub">' + manInput('placa', r.placa, who + ' placeholder="—"') + '</td>';
       r.dias.forEach(function (d, i) {
         var diaIso = isoDate(dias[i]);
         corpo += '<td class="hora e' + (d.e ? '' : ' vazio') + '">' + manInputHora(d.e, r.chave, diaIso) + '</td>' +
