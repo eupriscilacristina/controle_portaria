@@ -1232,7 +1232,9 @@ table.espelho {
 .espelho td.sub .celula-input,
 .espelho td.pessoa .celula-input.c-nome,
 .espelho td.sub .celula-input.c-funcao,
-.espelho td.sub .celula-input.c-empresa {
+.espelho td.sub .celula-input.c-empresa,
+.espelho td.sub .celula-input.c-veiculo,
+.espelho td.sub .celula-input.c-placa {
   color: #334155;
   -webkit-text-fill-color: #334155;
   font-size: 12.5px;
@@ -1459,7 +1461,9 @@ table.espelho {
 /* texto do Registro manual: Nome, Funcao e Empresa visualmente identicos */
 .celula-input.c-nome,
 .celula-input.c-funcao,
-.celula-input.c-empresa {
+.celula-input.c-empresa,
+.celula-input.c-veiculo,
+.celula-input.c-placa {
   font-family: inherit;
   font-size: 12.5px;
   font-style: normal;
@@ -1482,9 +1486,19 @@ table.espelho {
   min-width: 110px;
 }
 
+.celula-input.c-veiculo {
+  min-width: 96px;
+}
+
+.celula-input.c-placa {
+  min-width: 84px;
+}
+
 .celula-input.c-nome::placeholder,
 .celula-input.c-funcao::placeholder,
-.celula-input.c-empresa::placeholder {
+.celula-input.c-empresa::placeholder,
+.celula-input.c-veiculo::placeholder,
+.celula-input.c-placa::placeholder {
   color: #6b7280;
   -webkit-text-fill-color: #6b7280;
   font-weight: 600;
@@ -1497,9 +1511,13 @@ table.espelho {
 .nova-linha .celula-input.c-nome,
 .nova-linha .celula-input.c-funcao,
 .nova-linha .celula-input.c-empresa,
+.nova-linha .celula-input.c-veiculo,
+.nova-linha .celula-input.c-placa,
 .nova-linha .celula-input.c-nome::placeholder,
 .nova-linha .celula-input.c-funcao::placeholder,
-.nova-linha .celula-input.c-empresa::placeholder {
+.nova-linha .celula-input.c-empresa::placeholder,
+.nova-linha .celula-input.c-veiculo::placeholder,
+.nova-linha .celula-input.c-placa::placeholder {
   color: #334155;
   -webkit-text-fill-color: #334155;
   font-weight: 600;
@@ -1510,9 +1528,17 @@ table.espelho {
 
 .espelho td.pessoa .celula-input.c-nome,
 .espelho td.sub .celula-input.c-funcao,
-.espelho td.sub .celula-input.c-empresa {
+.espelho td.sub .celula-input.c-empresa,
+.espelho td.sub .celula-input.c-veiculo,
+.espelho td.sub .celula-input.c-placa {
   color: #334155;
   font-weight: 600;
+}
+
+.espelho td.sub .celula-input.c-placa.uppercase,
+.espelho td.sub .celula-input.c-placa {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .espelho td.hora .hora-input {
@@ -1849,8 +1875,14 @@ table.espelho {
 
   .semana-bloco .espelho .celula-input.c-nome,
   .semana-bloco .espelho .celula-input.c-funcao,
-  .semana-bloco .espelho .celula-input.c-empresa {
+  .semana-bloco .espelho .celula-input.c-empresa,
+  .semana-bloco .espelho .celula-input.c-veiculo {
     min-width: 96px;
+    font-size: 11.5px;
+  }
+
+  .semana-bloco .espelho .celula-input.c-placa {
+    min-width: 84px;
     font-size: 11.5px;
   }
 

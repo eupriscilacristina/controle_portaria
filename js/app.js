@@ -13,7 +13,7 @@
     semanaRef: new Date(),
     semanaFiltros: { q: '', empresa: '', obra: '' },
     manMesRef: new Date(),
-    manNovo: { nome: '', funcao: '', empresa: '' },
+    manNovo: { nome: '', funcao: '', empresa: '', veiculo: '', placa: '' },
     manPessoas: {}
   };
 
@@ -1442,7 +1442,11 @@
       '<td class="sub"><input type="text" class="celula-input c-funcao" data-man-novo="funcao" ' +
       'placeholder="Função" value="' + esc(n.funcao) + '"></td>' +
       '<td class="sub"><input type="text" class="celula-input c-empresa" data-man-novo="empresa" ' +
-      'placeholder="Empresa" value="' + esc(n.empresa) + '"></td>';
+      'placeholder="Empresa" value="' + esc(n.empresa) + '"></td>' +
+      '<td class="sub"><input type="text" class="celula-input c-veiculo" data-man-novo="veiculo" ' +
+      'placeholder="Veículo" value="' + esc(n.veiculo) + '"></td>' +
+      '<td class="sub"><input type="text" class="celula-input c-placa uppercase" data-man-novo="placa" ' +
+      'placeholder="Placa" value="' + esc(n.placa) + '"></td>';
     dias.forEach(function (d) {
       var diaIso = isoDate(d);
       corpo += '<td class="hora e"><input type="time" class="celula-input hora-input e" data-man-novo-hora="e" ' +
@@ -1458,7 +1462,9 @@
     var head1 = '<tr>' +
       '<th class="pessoa" rowspan="2">Nome</th>' +
       '<th class="sub" rowspan="2">Função</th>' +
-      '<th class="sub" rowspan="2">Empresa</th>';
+      '<th class="sub" rowspan="2">Empresa</th>' +
+      '<th class="sub" rowspan="2">Veículo</th>' +
+      '<th class="sub" rowspan="2">Placa</th>';
     var head2 = '<tr>';
     var hoje = new Date();
     dias.forEach(function (d) {
@@ -1475,7 +1481,7 @@
     var ini = dias[0];
     var fim = dias[dias.length - 1];
     var linhas = manLinhas(dias);
-    var cols = 3 + dias.length * 2 + (ehAdmin() ? 1 : 0);
+    var cols = 5 + dias.length * 2 + (ehAdmin() ? 1 : 0);
     var corpo = '';
     var ultimaEmpresa = null;
 
@@ -1489,7 +1495,9 @@
       corpo += '<tr>' +
         '<td class="pessoa">' + manInput('nome', r.nome, who) + '</td>' +
         '<td class="sub">' + manInput('funcao', r.funcao, who) + '</td>' +
-        '<td class="sub">' + manInput('empresa', r.empresa, who) + '</td>';
+        '<td class="sub">' + manInput('empresa', r.empresa, who) + '</td>' +
+        '<td class="sub">' + manInput('veiculo', r.veiculo, who) + '</td>' +
+        '<td class="sub">' + manInput('placa', r.placa, who) + '</td>';
       r.dias.forEach(function (d, i) {
         var diaIso = isoDate(dias[i]);
         corpo += '<td class="hora e' + (d.e ? '' : ' vazio') + '">' + manInputHora(d.e, r.chave, diaIso) + '</td>' +
@@ -1562,12 +1570,13 @@
 
   function salvarTextoManual(input) {
     var chave = input.getAttribute('data-man-chave');
-    var m = input.className.match(/c-(nome|empresa|funcao)/);
+    var m = input.className.match(/c-(nome|empresa|funcao|veiculo|placa)/);
     if (!chave || !m) return;
     var p = manPessoa(chave);
     if (!p) return;
     var valor = input.value.trim();
     if (m[1] === 'nome' && !valor) { renderManual(); return; }
+    if (m[1] === 'placa') valor = valor.toUpperCase();
 
     var patch = {};
     patch[m[1]] = valor || null;
@@ -1644,6 +1653,8 @@
     var campoNome = linha.querySelector('[data-man-novo="nome"]');
     var campoFuncao = linha.querySelector('[data-man-novo="funcao"]');
     var campoEmpresa = linha.querySelector('[data-man-novo="empresa"]');
+    var campoVeiculo = linha.querySelector('[data-man-novo="veiculo"]');
+    var campoPlaca = linha.querySelector('[data-man-novo="placa"]');
     var nome = campoNome.value.trim();
 
     if (!hora) { renderManual(); return; }
@@ -1664,8 +1675,8 @@
       nome: nome,
       empresa: (campoEmpresa.value || '').trim() || null,
       funcao: (campoFuncao.value || '').trim() || null,
-      veiculo: null,
-      placa: null,
+      veiculo: (campoVeiculo.value || '').trim() || null,
+      placa: (campoPlaca.value || '').trim().toUpperCase() || null,
       dataMovimento: iso,
       dataEntrada: mov === 'e' ? iso : null,
       dataSaida: mov === 's' ? iso : null,
@@ -1674,6 +1685,8 @@
       state.manNovo.nome = '';
       state.manNovo.empresa = '';
       state.manNovo.funcao = '';
+      state.manNovo.veiculo = '';
+      state.manNovo.placa = '';
       toast(mov === 'e' ? 'Entrada registrada' : 'Saída registrada');
     }).catch(function (err) {
       console.error(err);
@@ -1701,7 +1714,8 @@
     semanasDoMes(ref).forEach(function (dias) {
       var vis = diasVisiveis(dias, ref);
       if (!vis.length) return;
-      var head = ['Semana ' + rotuloData(vis[0]) + ' a ' + rotuloData(vis[vis.length - 1])];
+      var head = ['Semana ' + rotuloData(vis[0]) + ' a ' + rotuloData(vis[vis.length - 1]),
+        'Nome', 'Função', 'Empresa', 'Veículo', 'Placa'];
       vis.forEach(function (d) {
         var lbl = DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + ' ' + d.getDate();
         head.push(lbl + ' E');
@@ -1709,7 +1723,7 @@
       });
       linhas.push(head.map(csvCell).join(';'));
       manLinhas(vis).forEach(function (r) {
-        var l = [r.nome, r.funcao, r.empresa];
+        var l = [r.nome, r.funcao, r.empresa, r.veiculo || '', r.placa || ''];
         r.dias.forEach(function (d) {
           l.push(d.e ? d.e.hora : '');
           l.push(d.s ? d.s.hora : '');
