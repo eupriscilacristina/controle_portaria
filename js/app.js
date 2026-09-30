@@ -13,7 +13,7 @@
     semanaRef: new Date(),
     semanaFiltros: { q: '', empresa: '', obra: '' },
     manMesRef: new Date(),
-    manNovo: { nome: '', funcao: '', empresa: '' },
+    manNovo: { nome: '', funcao: '', empresa: '', veiculo: '', placa: '' },
     manPessoas: {}
   };
 
@@ -210,7 +210,9 @@
     });
   }
 
-  function initFirebase() {
+  // Código original do Firebase, preservado apenas como referência.
+  // Não é mais chamado: a aplicação usa a API REST (api-config.js).
+  function conectarFirebase() {
     if (typeof firebase === 'undefined' || typeof firebase.firestore !== 'function' || typeof firebase.auth !== 'function') return false;
     var cfg = typeof firebaseConfig !== 'undefined' ? firebaseConfig : null;
     if (!cfg || !cfg.apiKey || cfg.apiKey.indexOf('COLE_') === 0) return false;
@@ -220,8 +222,8 @@
       fs = firebase.firestore();
       auth = firebase.auth();
       try {
-        fs.enablePersistence({ synchronizeTabs: true }).catch(function () {});
-      } catch (e) {}
+        fs.enablePersistence({ synchronizeTabs: true }).catch(function () { });
+      } catch (e) { }
       return true;
     } catch (e) {
       console.error(e);
@@ -231,15 +233,45 @@
     }
   }
 
+  function initFirebase() {
+    useCloud = true;
+    return true;
+  }
+
+  var USER_KEY = 'eugestao_user';
+
+  function getUserSalvo() {
+    try {
+      var raw = localStorage.getItem(USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setUserSalvo(u) {
+    try {
+      if (u) localStorage.setItem(USER_KEY, JSON.stringify(u));
+      else localStorage.removeItem(USER_KEY);
+    } catch (e) { }
+  }
+
+  function sessaoDe(user, fallback) {
+    var u = user || {};
+    return {
+      usuario: u.usuario || u.email || u.login || u.nome || fallback || '',
+      papel: u.papel || u.role || u.perfil || u.tipo || null
+    };
+  }
+
   function tsNow() {
-    if (!useCloud) return new Date();
-    return firebase.firestore.FieldValue.serverTimestamp();
+    return new Date().toISOString();
   }
 
   function persistDemo() {
     try {
       localStorage.setItem('portaria_demo_v2', JSON.stringify(mem));
-    } catch (e) {}
+    } catch (e) { }
   }
 
   function seedDemo() {
@@ -301,7 +333,7 @@
         mem.pessoas = p.pessoas || [];
         if (mem.pessoas.length) return;
       }
-    } catch (e) {}
+    } catch (e) { }
     seedDemo();
     persistDemo();
   }
@@ -313,6 +345,20 @@
     persistDemo();
   }
 
+  var API_COLL = { pessoas: '/pessoas', acessos: '/acessos' };
+  var POLLING_MS = 5000;
+
+  function apiPath(coll) {
+    return API_COLL[coll] || ('/' + coll);
+  }
+
+  function listaDaResposta(r) {
+    if (Array.isArray(r)) return r;
+    if (!r || typeof r !== 'object') return [];
+    var out = r.data || r.items || r.registros || r.results;
+    return Array.isArray(out) ? out : [];
+  }
+
   function watch(coll, cb) {
     if (!useCloud) {
       memL[coll].push(cb);
@@ -322,18 +368,39 @@
         if (i >= 0) memL[coll].splice(i, 1);
       };
     }
-    return fs.collection(coll).limit(2000).onSnapshot(function (snap) {
-      var out = [];
-      snap.docs.forEach(function (d) {
-        var o = d.data();
-        o.id = d.id;
-        out.push(o);
-      });
-      cb(out);
-    }, function (err) {
-      console.error(err);
-      toast('Falha ao carregar dados do Firebase', 'erro');
-    });
+
+    var cancelado = false;
+    var timer = null;
+    var avisou = false;
+
+    function agendar() {
+      if (cancelado) return;
+      timer = setTimeout(poll, POLLING_MS);
+    }
+
+    function poll() {
+      if (cancelado) return;
+      apiGet(apiPath(coll)).then(function (r) {
+        if (cancelado) return;
+        avisou = false;
+        cb(listaDaResposta(r));
+      }).catch(function (err) {
+        if (cancelado) return;
+        console.error(err);
+        if (!avisou) {
+          avisou = true;
+          toast('Falha ao carregar dados da API', 'erro');
+        }
+      }).then(agendar);
+    }
+
+    poll();
+
+    return function () {
+      cancelado = true;
+      clearTimeout(timer);
+      timer = null;
+    };
   }
 
   function docAdd(coll, data) {
@@ -346,7 +413,9 @@
       notify(coll);
       return Promise.resolve(id);
     }
-    return fs.collection(coll).add(data).then(function (r) { return r.id; });
+    return apiPost(apiPath(coll), data).then(function (r) {
+      return (r && r.id) ? r.id : null;
+    });
   }
 
   function docUpdate(coll, id, data) {
@@ -357,7 +426,7 @@
       notify(coll);
       return Promise.resolve();
     }
-    return fs.collection(coll).doc(id).update(data);
+    return apiPut(apiPath(coll) + '/' + id, data);
   }
 
   function docDelete(coll, id) {
@@ -366,14 +435,14 @@
       notify(coll);
       return Promise.resolve();
     }
-    return fs.collection(coll).doc(id).delete();
+    return apiDelete(apiPath(coll) + '/' + id);
   }
 
   function renderStatus() {
     var el = $('#statusConexao');
     if (useCloud) {
       el.className = 'conn';
-      el.innerHTML = '<span class="dot"></span> Firebase';
+      el.innerHTML = '<span class="dot"></span> API';
     } else {
       el.className = 'conn off';
       el.innerHTML = '<span class="dot"></span> Modo local';
@@ -381,7 +450,9 @@
   }
 
   function ehAdmin() {
-    return !!(state.sessao && state.sessao.usuario === 'admin');
+    if (!state.sessao) return false;
+    return String(state.sessao.usuario || '').toLowerCase() === 'admin' ||
+      String(state.sessao.papel || '').toLowerCase() === 'admin';
   }
 
   function exigirAdmin(mensagem) {
@@ -463,19 +534,19 @@
     if (a.obs) meta += ' · ' + esc(a.obs);
     var cancelar = ehAdmin()
       ? '<button type="button" class="btn danger sm" data-act="excluirAcesso" data-id="' + esc(a.id) +
-        '" title="Apagar este registro de acesso">Excluir</button>'
+      '" title="Apagar este registro de acesso">Excluir</button>'
       : '';
     return '<div class="item">' +
       '<div class="item-main">' +
-        '<div class="item-title">' + esc(a.nome) + '<span class="badge ok">Dentro</span></div>' +
-        '<div class="item-sub">' + subLinha(a) + '</div>' +
-        '<div class="item-meta">' + meta + '</div>' +
+      '<div class="item-title">' + esc(a.nome) + '<span class="badge ok">Dentro</span></div>' +
+      '<div class="item-sub">' + subLinha(a) + '</div>' +
+      '<div class="item-meta">' + meta + '</div>' +
       '</div>' +
       '<div class="item-actions">' +
-        '<button type="button" class="btn success sm" data-act="saida" data-id="' + esc(a.id) + '">Registrar saída</button>' +
-        cancelar +
+      '<button type="button" class="btn success sm" data-act="saida" data-id="' + esc(a.id) + '">Registrar saída</button>' +
+      cancelar +
       '</div>' +
-    '</div>';
+      '</div>';
   }
 
   function itemHistHTML(a) {
@@ -493,12 +564,12 @@
     }
     return '<div class="item">' +
       '<div class="item-main">' +
-        '<div class="item-title">' + esc(a.nome) + badge + '</div>' +
-        '<div class="item-sub">' + subLinha(a) + '</div>' +
-        '<div class="item-meta">' + meta + '</div>' +
+      '<div class="item-title">' + esc(a.nome) + badge + '</div>' +
+      '<div class="item-sub">' + subLinha(a) + '</div>' +
+      '<div class="item-meta">' + meta + '</div>' +
       '</div>' +
       '<div class="item-actions">' + acoes + '</div>' +
-    '</div>';
+      '</div>';
   }
 
   function itemPessoaHTML(p) {
@@ -511,11 +582,11 @@
     return '<div class="item with-avatar">' +
       '<div class="avatar">' + esc(iniciais(p.nome)) + '</div>' +
       '<div class="item-main">' +
-        '<div class="item-title">' + esc(p.nome) + '</div>' +
-        '<div class="item-sub">' + detalhes + '</div>' +
+      '<div class="item-title">' + esc(p.nome) + '</div>' +
+      '<div class="item-sub">' + detalhes + '</div>' +
       '</div>' +
       '<div class="item-actions">' + acoes + '</div>' +
-    '</div>';
+      '</div>';
   }
 
   function renderDentro() {
@@ -595,14 +666,14 @@
     $('#listaPessoasList').innerHTML = itens.length
       ? itens.map(itemPessoaHTML).join('')
       : '<div class="empty"><strong>Nenhuma pessoa cadastrada</strong>' +
-        (ehAdmin() ? 'Cadastre trabalhadores ou importe a base da planilha.' : 'A lista de cadastros fica disponível para os administradores.') + '</div>';
+      (ehAdmin() ? 'Cadastre trabalhadores ou importe a base da planilha.' : 'A lista de cadastros fica disponível para os administradores.') + '</div>';
 
     var btn = $('#btnImportar');
     btn.hidden = !ehAdmin() || !useCloud || !BASE.length;
     btn.textContent = 'Importar base da planilha (' + BASE.length + ')';
   }
 
-  function renderDatalist() {}
+  function renderDatalist() { }
 
   function segundaDaSemana(ref) {
     var d = startOfDay(ref);
@@ -767,8 +838,8 @@
       if (ehAdmin()) {
         corpo += '<td class="excluir-col">' + (r.ids.length
           ? '<button type="button" class="btn danger sm" data-act="excluirSemana" data-ids="' +
-            esc(r.ids.filter(function (v, i, s2) { return s2.indexOf(v) === i; }).join(',')) +
-            '" data-nome="' + esc(r.nome) + '">Excluir</button>'
+          esc(r.ids.filter(function (v, i, s2) { return s2.indexOf(v) === i; }).join(',')) +
+          '" data-nome="' + esc(r.nome) + '">Excluir</button>'
           : '—') + '</td>';
       }
       corpo += '</tr>';
@@ -1151,7 +1222,9 @@
     });
   }
 
-  function importarBase() {
+  // Importação em lote via Firestore (batch). Preservada, porém indisponível
+  // na versão API — o endpoint em lote ainda não existe.
+  function importarBaseFirebase() {
     if (!exigirAdmin('Somente o Admin pode importar a base.')) return;
     if (!useCloud || !BASE.length || !fs) return;
     var existentes = {};
@@ -1161,7 +1234,7 @@
       toast('Base já importada · ' + state.pessoas.length + ' pessoas');
       return;
     }
-    if (!confirm('Importar ' + novos.length + ' pessoas da planilha para o Firebase?')) return;
+    if (!confirm('Importar ' + novos.length + ' pessoas da planilha?')) return;
 
     var batch = fs.batch();
     var contador = 0;
@@ -1191,6 +1264,11 @@
       console.error(e);
       toast('Erro ao importar base', 'erro');
     });
+  }
+
+  function importarBase() {
+    if (!exigirAdmin('Somente o Admin pode importar a base.')) return;
+    toast('Importação indisponível na versão API', 'erro');
   }
 
   function onListaClick(ev) {
@@ -1364,7 +1442,11 @@
       '<td class="sub"><input type="text" class="celula-input c-funcao" data-man-novo="funcao" ' +
       'placeholder="Função" value="' + esc(n.funcao) + '"></td>' +
       '<td class="sub"><input type="text" class="celula-input c-empresa" data-man-novo="empresa" ' +
-      'placeholder="Empresa" value="' + esc(n.empresa) + '"></td>';
+      'placeholder="Empresa" value="' + esc(n.empresa) + '"></td>' +
+      '<td class="sub"><input type="text" class="celula-input c-veiculo" data-man-novo="veiculo" ' +
+      'placeholder="Veículo" value="' + esc(n.veiculo) + '"></td>' +
+      '<td class="sub"><input type="text" class="celula-input c-placa uppercase" data-man-novo="placa" ' +
+      'placeholder="Placa" value="' + esc(n.placa) + '"></td>';
     dias.forEach(function (d) {
       var diaIso = isoDate(d);
       corpo += '<td class="hora e"><input type="time" class="celula-input hora-input e" data-man-novo-hora="e" ' +
@@ -1380,7 +1462,9 @@
     var head1 = '<tr>' +
       '<th class="pessoa" rowspan="2">Nome</th>' +
       '<th class="sub" rowspan="2">Função</th>' +
-      '<th class="sub" rowspan="2">Empresa</th>';
+      '<th class="sub" rowspan="2">Empresa</th>' +
+      '<th class="sub" rowspan="2">Veículo</th>' +
+      '<th class="sub" rowspan="2">Placa</th>';
     var head2 = '<tr>';
     var hoje = new Date();
     dias.forEach(function (d) {
@@ -1397,7 +1481,7 @@
     var ini = dias[0];
     var fim = dias[dias.length - 1];
     var linhas = manLinhas(dias);
-    var cols = 3 + dias.length * 2 + (ehAdmin() ? 1 : 0);
+    var cols = 5 + dias.length * 2 + (ehAdmin() ? 1 : 0);
     var corpo = '';
     var ultimaEmpresa = null;
 
@@ -1411,7 +1495,9 @@
       corpo += '<tr>' +
         '<td class="pessoa">' + manInput('nome', r.nome, who) + '</td>' +
         '<td class="sub">' + manInput('funcao', r.funcao, who) + '</td>' +
-        '<td class="sub">' + manInput('empresa', r.empresa, who) + '</td>';
+        '<td class="sub">' + manInput('empresa', r.empresa, who) + '</td>' +
+        '<td class="sub">' + manInput('veiculo', r.veiculo, who + ' placeholder="—"') + '</td>' +
+        '<td class="sub">' + manInput('placa', r.placa, who + ' placeholder="—"') + '</td>';
       r.dias.forEach(function (d, i) {
         var diaIso = isoDate(dias[i]);
         corpo += '<td class="hora e' + (d.e ? '' : ' vazio') + '">' + manInputHora(d.e, r.chave, diaIso) + '</td>' +
@@ -1484,12 +1570,13 @@
 
   function salvarTextoManual(input) {
     var chave = input.getAttribute('data-man-chave');
-    var m = input.className.match(/c-(nome|empresa|funcao)/);
+    var m = input.className.match(/c-(nome|empresa|funcao|veiculo|placa)/);
     if (!chave || !m) return;
     var p = manPessoa(chave);
     if (!p) return;
     var valor = input.value.trim();
     if (m[1] === 'nome' && !valor) { renderManual(); return; }
+    if (m[1] === 'placa') valor = valor.toUpperCase();
 
     var patch = {};
     patch[m[1]] = valor || null;
@@ -1566,6 +1653,8 @@
     var campoNome = linha.querySelector('[data-man-novo="nome"]');
     var campoFuncao = linha.querySelector('[data-man-novo="funcao"]');
     var campoEmpresa = linha.querySelector('[data-man-novo="empresa"]');
+    var campoVeiculo = linha.querySelector('[data-man-novo="veiculo"]');
+    var campoPlaca = linha.querySelector('[data-man-novo="placa"]');
     var nome = campoNome.value.trim();
 
     if (!hora) { renderManual(); return; }
@@ -1586,8 +1675,8 @@
       nome: nome,
       empresa: (campoEmpresa.value || '').trim() || null,
       funcao: (campoFuncao.value || '').trim() || null,
-      veiculo: null,
-      placa: null,
+      veiculo: (campoVeiculo.value || '').trim() || null,
+      placa: (campoPlaca.value || '').trim().toUpperCase() || null,
       dataMovimento: iso,
       dataEntrada: mov === 'e' ? iso : null,
       dataSaida: mov === 's' ? iso : null,
@@ -1596,6 +1685,8 @@
       state.manNovo.nome = '';
       state.manNovo.empresa = '';
       state.manNovo.funcao = '';
+      state.manNovo.veiculo = '';
+      state.manNovo.placa = '';
       toast(mov === 'e' ? 'Entrada registrada' : 'Saída registrada');
     }).catch(function (err) {
       console.error(err);
@@ -1623,7 +1714,8 @@
     semanasDoMes(ref).forEach(function (dias) {
       var vis = diasVisiveis(dias, ref);
       if (!vis.length) return;
-      var head = ['Semana ' + rotuloData(vis[0]) + ' a ' + rotuloData(vis[vis.length - 1])];
+      var head = ['Semana ' + rotuloData(vis[0]) + ' a ' + rotuloData(vis[vis.length - 1]),
+        'Nome', 'Função', 'Empresa', 'Veículo', 'Placa'];
       vis.forEach(function (d) {
         var lbl = DIAS_CURTOS[d.getDay() === 0 ? 6 : d.getDay() - 1] + ' ' + d.getDate();
         head.push(lbl + ' E');
@@ -1631,7 +1723,7 @@
       });
       linhas.push(head.map(csvCell).join(';'));
       manLinhas(vis).forEach(function (r) {
-        var l = [r.nome, r.funcao, r.empresa];
+        var l = [r.nome, r.funcao, r.empresa, r.veiculo || '', r.placa || ''];
         r.dias.forEach(function (d) {
           l.push(d.e ? d.e.hora : '');
           l.push(d.s ? d.s.hora : '');
@@ -1668,7 +1760,6 @@
       ev.preventDefault();
       entrar();
     });
-    $('#loginLocal').addEventListener('click', entrarLocal);
     $('#btnSair').addEventListener('click', sair);
 
     $('#regTipoVeiculo').addEventListener('change', atualizarObrigatorioPlaca);
@@ -1800,35 +1891,54 @@
   }
 
   function entrar() {
-    var usuario = ($('#loginEmail').value || '').trim().toLowerCase();
+    var login = ($('#loginEmail').value || '').trim().toLowerCase();
     var senha = $('#loginSenha').value;
+    var btn = $('#loginBtn');
 
-    if (usuario === 'admin' && senha === '4080') {
-      state.sessao = { usuario: 'admin' };
-      $('#loginErro').textContent = '';
-      abrirApp();
+    if (!login || !senha) {
+      $('#loginErro').textContent = 'Informe usuário e senha.';
       return;
     }
 
-    if (usuario === 'portaria' && senha === '1234') {
-      state.sessao = { usuario: 'portaria' };
-      $('#loginErro').textContent = '';
-      abrirApp();
-      return;
-    }
+    btn.disabled = true;
+    btn.textContent = 'Entrando…';
+    $('#loginErro').textContent = '';
 
-    $('#loginErro').textContent = 'Usuário ou senha incorretos.';
+    apiLogin(login, senha).then(function (user) {
+      state.sessao = sessaoDe(user, login);
+      setUserSalvo({ usuario: state.sessao.usuario, papel: state.sessao.papel });
+      abrirApp();
+    }).catch(function (e) {
+      console.error(e);
+      $('#loginErro').textContent = 'Usuário ou senha incorretos.';
+    }).finally(function () {
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+    });
   }
 
-  function entrarLocal() {
-    if (useCloud) return;
-    state.sessao = { usuario: 'admin' };
-    abrirApp();
+  // Reabre a sessão com o token JWT salvo. Valida o token com uma chamada
+  // autenticada à API; se a resposta não for ok (401), o token é descartado.
+  function restaurarSessao() {
+    var salvo = getUserSalvo();
+    if (!getToken() || !salvo) return Promise.resolve(false);
+    return apiGet('/pessoas').then(function () {
+      state.sessao = sessaoDe(salvo);
+      abrirApp();
+      return true;
+    }).catch(function (e) {
+      console.warn('Token salvo inválido, exigindo novo login:', e);
+      clearToken();
+      setUserSalvo(null);
+      return false;
+    });
   }
 
   function sair() {
     var btn = $('#btnSair');
     btn.disabled = true;
+    clearToken();
+    setUserSalvo(null);
     try {
       encerrarSessao();
     } catch (e) {
@@ -1853,7 +1963,6 @@
     $('#btnSair').hidden = true;
     $('#loginSenha').value = '';
     $('#loginErro').textContent = '';
-    $('#loginLocal').hidden = !state.demo;
     $('#loginEmail').focus();
     var r = $('#sessaoRotulo');
     if (r) r.hidden = true;
@@ -1903,11 +2012,12 @@
     bind();
     setTipo('veiculo');
     $('#loginScreen').hidden = false;
-    $('#loginLocal').hidden = !state.demo;
     $('#loginEmail').focus();
 
+    restaurarSessao();
+
     if (auth && auth.currentUser) {
-      auth.signOut().catch(function () {});
+      auth.signOut().catch(function () { });
     }
 
     setInterval(function () {
