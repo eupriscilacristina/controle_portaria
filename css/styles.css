@@ -242,7 +242,7 @@ svg {
   padding: 4px 8px;
   border-radius: 12px;
   background: #fff;
-  border: 1px solid rgba(17, 18, 20, 0.55);
+  border: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -264,7 +264,7 @@ svg {
 
 .brand-text h1 {
   margin: 0;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.01em;
   background: linear-gradient(90deg, #101113, #45484e);
@@ -275,7 +275,7 @@ svg {
 
 .brand-text p {
   margin: 1px 0 0;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
 }
 
