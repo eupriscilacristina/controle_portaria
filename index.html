@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=63">
+  <link rel="stylesheet" href="css/styles.css?v=64">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#f97316">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -191,6 +191,14 @@
             <div class="field">
               <label for="regAtividade">Atividade</label>
               <input id="regAtividade" maxlength="80" placeholder="Ex.: Fornecedor, entrega, visita…">
+            </div>
+            <div class="field full checklist-bloco" id="checklistBloco">
+              <div class="checklist-head">
+                <span class="checklist-titulo">Checklist de entrada</span>
+                <button type="button" class="btn ghost sm" id="btnChecklistTudo">Marcar tudo OK</button>
+              </div>
+              <div class="checklist-itens" id="checklistItens"></div>
+              <p class="checklist-aviso" id="checklistAviso" role="alert" hidden></p>
             </div>
             <div class="field full form-actions">
               <button type="submit" class="btn primary lg" id="btnRegistrar">Registrar entrada</button>
@@ -474,7 +482,7 @@
   <script defer src="js/firebase-config.js?v=4"></script>
   <script defer src="js/api-config.js?v=1"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=61"></script>
+  <script defer src="js/app.js?v=62"></script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js');});}</script>
 </body>
 

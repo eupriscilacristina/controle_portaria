@@ -969,6 +969,171 @@
     $$('.grupo-veiculo').forEach(function (el) { el.hidden = t !== 'veiculo'; });
     $$('.grupo-pessoa').forEach(function (el) { el.hidden = t !== 'pessoa'; });
     atualizarObrigatorioPlaca();
+    renderChecklist();
+  }
+
+  // ===== Checklist de entrada =====
+  // Itens vindos da API por obra; em caso de lista vazia ou erro, usa os
+  // padrões locais (que nunca são gravados no banco).
+  var CHK_DEBOUNCE_MS = 500;
+  var CHK_ITEM_VEICULO = 'Veículo vistoriado';
+  var CHK_PADRAO = ['EPI', 'NF conferida', 'Crachá', CHK_ITEM_VEICULO];
+
+  var checklist = { itens: [], respostas: {}, seq: 0, timer: null };
+
+  function checklistChave(rotulo) {
+    return normTxt(rotulo);
+  }
+
+  function checklistLimparRespostas() {
+    checklist.respostas = {};
+  }
+
+  function checklistDefinir(rotulos) {
+    var vistos = {};
+    checklist.itens = [];
+    rotulos.forEach(function (rotulo) {
+      var texto = String(rotulo == null ? '' : rotulo).trim();
+      var k = checklistChave(texto);
+      if (!k || vistos[k]) return;
+      if (state.tipo === 'pessoa' && k === checklistChave(CHK_ITEM_VEICULO)) return;
+      vistos[k] = true;
+      checklist.itens.push({ rotulo: texto });
+    });
+    renderChecklist();
+  }
+
+  function checklistCarregar(obra) {
+    var seq = ++checklist.seq;
+    var valor = String(obra == null ? '' : obra).trim();
+    if (!valor) {
+      checklistDefinir(CHK_PADRAO.slice());
+      return;
+    }
+    apiGet('/checklist?obra=' + encodeURIComponent(valor)).then(function (r) {
+      if (seq !== checklist.seq) return;
+      var lista = listaDaResposta(r).slice().sort(function (a, b) {
+        return (Number(a && a.ordem) || 0) - (Number(b && b.ordem) || 0);
+      });
+      var rotulos = lista.map(function (it) { return it && it.rotulo; }).filter(Boolean);
+      checklistDefinir(rotulos.length ? rotulos : CHK_PADRAO.slice());
+    }).catch(function () {
+      if (seq !== checklist.seq) return;
+      checklistDefinir(CHK_PADRAO.slice());
+    });
+  }
+
+  function checklistReset() {
+    checklistLimparRespostas();
+    var obra = $('#regObra');
+    checklistCarregar(obra ? obra.value : '');
+  }
+
+  function renderChecklist() {
+    var cont = $('#checklistItens');
+    if (!cont) return;
+    var aviso = $('#checklistAviso');
+    if (aviso) {
+      aviso.hidden = true;
+      aviso.textContent = '';
+    }
+    if (!checklist.itens.length) {
+      cont.innerHTML = '<div class="checklist-vazio">Checklist indisponível — o registro seguirá sem checklist.</div>';
+      return;
+    }
+    cont.innerHTML = checklist.itens.map(function (it) {
+      var resp = checklist.respostas[checklistChave(it.rotulo)];
+      return '<div class="checklist-item" data-chk-chave="' + esc(checklistChave(it.rotulo)) + '">' +
+        '<span class="checklist-rotulo">' + esc(it.rotulo) + '</span>' +
+        '<div class="checklist-toggle" role="group" aria-label="' + esc(it.rotulo) + '">' +
+        '<button type="button" class="chk-btn chk-sim' + (resp === true ? ' ativo' : '') +
+        '" data-chk-ok="1" aria-pressed="' + (resp === true ? 'true' : 'false') + '">Sim</button>' +
+        '<button type="button" class="chk-btn chk-nao' + (resp === false ? ' ativo' : '') +
+        '" data-chk-ok="0" aria-pressed="' + (resp === false ? 'true' : 'false') + '">Não</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function checklistToggle(botao) {
+    var item = botao.closest('.checklist-item');
+    if (!item) return;
+    var k = item.getAttribute('data-chk-chave');
+    if (!k) return;
+    var ok = botao.getAttribute('data-chk-ok') === '1';
+    checklist.respostas[k] = ok;
+    $$('.chk-btn', item).forEach(function (b) {
+      var ativo = (b.getAttribute('data-chk-ok') === '1') === ok;
+      b.classList.toggle('ativo', ativo);
+      b.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+    });
+    item.classList.remove('pendente');
+    var aviso = $('#checklistAviso');
+    if (aviso) {
+      aviso.hidden = true;
+      aviso.textContent = '';
+    }
+  }
+
+  function checklistMarcarTudo() {
+    checklist.itens.forEach(function (it) {
+      checklist.respostas[checklistChave(it.rotulo)] = true;
+    });
+    renderChecklist();
+  }
+
+  function checklistPendentes() {
+    return checklist.itens.filter(function (it) {
+      return checklist.respostas[checklistChave(it.rotulo)] === undefined;
+    });
+  }
+
+  function checklistAvisarPendentes() {
+    renderChecklist();
+    var cont = $('#checklistItens');
+    if (cont) {
+      $$('.checklist-item', cont).forEach(function (el) {
+        if (checklist.respostas[el.getAttribute('data-chk-chave')] === undefined) {
+          el.classList.add('pendente');
+        }
+      });
+    }
+    var aviso = $('#checklistAviso');
+    if (aviso) {
+      aviso.textContent = 'Responda Sim ou Não em todos os itens do checklist de entrada.';
+      aviso.hidden = false;
+    }
+    var bloco = $('#checklistBloco');
+    if (bloco && bloco.scrollIntoView) bloco.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Responda todos os itens do checklist de entrada', 'erro');
+  }
+
+  function checklistPayload() {
+    return {
+      itens: checklist.itens.map(function (it) {
+        return { rotulo: it.rotulo, ok: checklist.respostas[checklistChave(it.rotulo)] === true };
+      }),
+      preenchidoEm: tsNow()
+    };
+  }
+
+  function checklistInit() {
+    var obra = $('#regObra');
+    var cont = $('#checklistItens');
+    if (!obra || !cont) return;
+    obra.addEventListener('input', function () {
+      clearTimeout(checklist.timer);
+      checklist.timer = setTimeout(function () {
+        checklistLimparRespostas();
+        checklistCarregar(obra.value);
+      }, CHK_DEBOUNCE_MS);
+    });
+    cont.addEventListener('click', function (ev) {
+      var botao = ev.target.closest('.chk-btn');
+      if (botao) checklistToggle(botao);
+    });
+    var tudo = $('#btnChecklistTudo');
+    if (tudo) tudo.addEventListener('click', checklistMarcarTudo);
+    checklistCarregar(obra.value);
   }
 
   function registrarEntrada(ev) {
@@ -1010,6 +1175,11 @@
       return;
     }
 
+    if (checklist.itens.length && checklistPendentes().length) {
+      checklistAvisarPendentes();
+      return;
+    }
+
     var btn = $('#btnRegistrar');
     btn.disabled = true;
     btn.textContent = 'Salvando…';
@@ -1032,10 +1202,13 @@
       dataSaida: null
     };
 
+    if (checklist.itens.length) data.checklist = checklistPayload();
+
     docAdd('acessos', data).then(function () {
       toast('Entrada registrada · ' + nome);
       $('#formEntrada').reset();
       setTipo(state.tipo);
+      checklistReset();
       $('#regNome').focus();
     }).catch(function (e) {
       console.error(e);
@@ -2026,4 +2199,5 @@
   }
 
   boot();
+  checklistInit();
 })();
