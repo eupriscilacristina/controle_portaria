@@ -2009,3 +2009,50 @@ table.espelho {
   color: #ffffff;
   -webkit-text-fill-color: #ffffff;
 }
+
+/* ===== Mobile (max-width: 600px) ===== */
+@media (max-width: 600px) {
+  button,
+  .btn,
+  input[type="button"],
+  input[type="submit"],
+  select,
+  input,
+  textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .form-grid,
+  .filters,
+  .cal-stats {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .espelho-wrap,
+  .semana-bloco .espelho-wrap {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .bottom-nav {
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100vw;
+  }
+
+  .nav-btn,
+  .seg-btn {
+    min-height: 44px;
+  }
+
+  body {
+    overflow-x: hidden;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+}
