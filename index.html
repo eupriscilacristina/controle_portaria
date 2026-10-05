@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=64">
+  <link rel="stylesheet" href="css/styles.css?v=65">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#f97316">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -412,6 +412,33 @@
         <input id="pessoasBusca" placeholder="Buscar por nome, CPF ou empresa">
       </div>
       <div class="list" id="listaPessoasList"></div>
+
+      <div class="card checklist-obra" id="checklistObraSec" hidden>
+        <div class="card-head">
+          <h2>Checklist por obra</h2>
+          <p>Itens do checklist de entrada por obra. Somente o Admin pode gerenciar.</p>
+        </div>
+        <div class="chkobra-ctrl">
+          <div class="field">
+            <label for="chkObraInput">Obra</label>
+            <input id="chkObraInput" maxlength="60" placeholder="Ex.: Obra A">
+          </div>
+          <button type="button" class="btn ghost sm" id="btnChkObraCarregar">Carregar itens</button>
+        </div>
+        <div class="chkobra-lista" id="chkObraLista"></div>
+        <form id="chkObraNovo" class="chkobra-novo" autocomplete="off">
+          <h3 class="chkobra-sub">Novo item</h3>
+          <div class="chkobra-novo-row">
+            <div class="field">
+              <label for="chkObraNovoRotulo">Rótulo</label>
+              <input id="chkObraNovoRotulo" maxlength="60" placeholder="Ex.: EPI">
+            </div>
+            <button type="submit" class="btn primary sm">Adicionar</button>
+          </div>
+          <p class="chkobra-nota">Ao criar o primeiro item de uma obra, os 4 itens padrão deixam de valer para ela.</p>
+          <button type="button" class="btn ghost sm" id="btnChkObraPadroes" hidden>Criar os 4 padrões nesta obra</button>
+        </form>
+      </div>
     </section>
   </main>
 
@@ -482,7 +509,7 @@
   <script defer src="js/firebase-config.js?v=4"></script>
   <script defer src="js/api-config.js?v=1"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=62"></script>
+  <script defer src="js/app.js?v=63"></script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js');});}</script>
 </body>
 

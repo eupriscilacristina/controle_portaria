@@ -2269,3 +2269,162 @@ table.espelho {
     font-size: 16px;
   }
 }
+
+/* ===== Checklist por obra (gestão Admin) ===== */
+.checklist-obra {
+  margin-top: 18px;
+}
+
+.chkobra-ctrl {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+
+.chkobra-ctrl .field {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.chkobra-ctrl .btn {
+  flex-shrink: 0;
+}
+
+.chkobra-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.chkobra-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--b1);
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+}
+
+.chkobra-rotulo {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chkobra-acoes {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.chkobra-acoes .btn {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.chkobra-acoes .btn[data-act="desativar"] {
+  min-width: 96px;
+}
+
+.chkobra-inicial,
+.chkobra-vazio {
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--b1);
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.chkobra-vazio p {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.chkobra-erro {
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--danger-bg);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: var(--danger);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.chkobra-nota {
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.chkobra-novo {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.chkobra-sub {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.chkobra-novo-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.chkobra-novo-row .field {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.chkobra-novo-row .btn {
+  flex-shrink: 0;
+  min-height: 44px;
+}
+
+.chkobra-novo .btn[type="submit"],
+#btnChkObraPadroes {
+  min-height: 44px;
+}
+
+/* ===== Checklist por obra — mobile (375px) ===== */
+@media (max-width: 400px) {
+  .chkobra-ctrl,
+  .chkobra-novo-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .chkobra-ctrl .btn,
+  .chkobra-novo-row .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .chkobra-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px 10px;
+  }
+
+  .chkobra-acoes {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .chkobra-acoes .btn {
+    flex: 1 1 0;
+  }
+
+  .chkobra-acoes .btn[data-act="desativar"] {
+    min-width: 0;
+  }
+}

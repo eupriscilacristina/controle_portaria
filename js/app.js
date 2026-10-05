@@ -477,6 +477,8 @@
     if (nav) nav.hidden = !admin;
     var navHist = $('#navHistorico');
     if (navHist) navHist.hidden = !admin;
+    var co = $('#checklistObraSec');
+    if (co) co.hidden = !admin;
     if (!admin && (state.tab === 'pessoas' || state.tab === 'historico')) setTab('registrar');
   }
 
@@ -1134,6 +1136,242 @@
     var tudo = $('#btnChecklistTudo');
     if (tudo) tudo.addEventListener('click', checklistMarcarTudo);
     checklistCarregar(obra.value);
+  }
+
+  // ===== Checklist por obra (gestão, somente Admin) =====
+  var chkObra = { obra: '', itens: [], carregado: false, erro: '' };
+
+  function chkObraErroDe(e) {
+    var m = /Erro na API: (\d+)/.exec(String((e && e.message) || ''));
+    var st = m ? Number(m[1]) : 0;
+    if (st === 401) return 'Sessão expirada. Faça login novamente.';
+    if (st === 403) return 'Sem permissão. Apenas o Admin pode gerenciar o checklist.';
+    if (st === 400) return 'Dados inválidos. Use obra e rótulo de 1 a 60 caracteres.';
+    return 'Erro ao falar com a API.';
+  }
+
+  function chkObraRotuloOk(v) {
+    var t = String(v == null ? '' : v).trim();
+    return t.length > 0 && t.length <= 60;
+  }
+
+  function chkObraRender() {
+    var lista = $('#chkObraLista');
+    if (!lista) return;
+    var botaoPadroes = $('#btnChkObraPadroes');
+    if (botaoPadroes) botaoPadroes.hidden = !(chkObra.carregado && !chkObra.erro && !chkObra.itens.length);
+    if (chkObra.erro) {
+      lista.innerHTML = '<div class="chkobra-erro">' + esc(chkObra.erro) + '</div>';
+      return;
+    }
+    if (!chkObra.carregado) {
+      lista.innerHTML = '<div class="chkobra-inicial">Informe a obra e clique em Carregar itens.</div>';
+      return;
+    }
+    if (!chkObra.itens.length) {
+      lista.innerHTML = '<div class="chkobra-vazio">' +
+        '<p>Esta obra usa os 4 itens padrão. Adicione um item para criar a lista própria.</p>' +
+        '<p class="chkobra-nota">Ao criar o primeiro item de uma obra, os itens padrão deixam de valer para ela.</p>' +
+        '</div>';
+      return;
+    }
+    lista.innerHTML = chkObra.itens.map(function (it, i) {
+      return '<div class="chkobra-item" data-id="' + esc(it.id) + '">' +
+        '<input class="chkobra-rotulo" maxlength="60" value="' + esc(it.rotulo) + '" aria-label="Rótulo do item">' +
+        '<div class="chkobra-acoes">' +
+        '<button type="button" class="btn ghost sm" data-act="subir"' + (i === 0 ? ' disabled' : '') +
+        ' aria-label="Subir" title="Subir">↑</button>' +
+        '<button type="button" class="btn ghost sm" data-act="descer"' + (i === chkObra.itens.length - 1 ? ' disabled' : '') +
+        ' aria-label="Descer" title="Descer">↓</button>' +
+        '<button type="button" class="btn danger sm" data-act="desativar">Desativar</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function chkObraItemDoEl(el) {
+    var bloco = el && el.closest ? el.closest('.chkobra-item') : null;
+    if (!bloco) return null;
+    var id = bloco.getAttribute('data-id');
+    return chkObra.itens.find(function (it) { return it.id === id; }) || null;
+  }
+
+  function chkObraCarregar() {
+    if (!exigirAdmin('Somente o Admin pode gerenciar o checklist por obra.')) return;
+    var campo = $('#chkObraInput');
+    var valor = String((campo && campo.value) || '').trim();
+    if (!valor) {
+      toast('Informe a obra para carregar os itens.', 'erro');
+      if (campo) campo.focus();
+      return;
+    }
+    if (!chkObraRotuloOk(valor)) {
+      toast('A obra deve ter de 1 a 60 caracteres.', 'erro');
+      return;
+    }
+    chkObra.obra = valor;
+    chkObra.itens = [];
+    chkObra.erro = '';
+    chkObra.carregado = false;
+    chkObraRender();
+    apiGet('/checklist?obra=' + encodeURIComponent(valor)).then(function (r) {
+      var itens = listaDaResposta(r).slice().sort(function (a, b) {
+        return (Number(a && a.ordem) || 0) - (Number(b && b.ordem) || 0);
+      });
+      chkObra.itens = itens;
+      chkObra.carregado = true;
+      chkObra.erro = '';
+      chkObraRender();
+    }).catch(function (e) {
+      console.error(e);
+      chkObra.itens = [];
+      chkObra.carregado = true;
+      chkObra.erro = chkObraErroDe(e);
+      chkObraRender();
+      toast(chkObra.erro, 'erro');
+    });
+  }
+
+  function chkObraSalvarRotulo(input) {
+    var item = chkObraItemDoEl(input);
+    if (!item) return;
+    var valor = String(input.value || '').trim();
+    if (!chkObraRotuloOk(valor)) {
+      toast('O rótulo deve ter de 1 a 60 caracteres.', 'erro');
+      input.value = item.rotulo;
+      return;
+    }
+    if (valor === item.rotulo) return;
+    apiPut('/checklist/' + encodeURIComponent(item.id), { rotulo: valor }).then(function () {
+      item.rotulo = valor;
+      toast('Rótulo atualizado');
+    }).catch(function (e) {
+      console.error(e);
+      input.value = item.rotulo;
+      toast(chkObraErroDe(e), 'erro');
+    });
+  }
+
+  function chkObraMover(botao, delta) {
+    var item = chkObraItemDoEl(botao);
+    if (!item) return;
+    var i = chkObra.itens.indexOf(item);
+    var j = i + delta;
+    if (i < 0 || j < 0 || j >= chkObra.itens.length) return;
+    var antes = {};
+    chkObra.itens.forEach(function (it) { antes[it.id] = it.ordem; });
+    var tmp = chkObra.itens[i];
+    chkObra.itens[i] = chkObra.itens[j];
+    chkObra.itens[j] = tmp;
+    var promessas = [];
+    chkObra.itens.forEach(function (it, k) {
+      var novaOrdem = k + 1;
+      if (antes[it.id] !== novaOrdem) {
+        it.ordem = novaOrdem;
+        promessas.push(apiPut('/checklist/' + encodeURIComponent(it.id), { ordem: novaOrdem }));
+      }
+    });
+    if (!promessas.length) {
+      chkObraRender();
+      return;
+    }
+    Promise.all(promessas).then(function () {
+      toast('Ordem atualizada');
+      chkObraRender();
+    }).catch(function (e) {
+      console.error(e);
+      toast(chkObraErroDe(e), 'erro');
+      chkObraCarregar();
+    });
+  }
+
+  function chkObraDesativar(botao) {
+    var item = chkObraItemDoEl(botao);
+    if (!item) return;
+    if (!confirm('Desativar o item "' + item.rotulo + '"?\nEle deixa de aparecer no checklist de entrada.')) return;
+    apiDelete('/checklist/' + encodeURIComponent(item.id)).then(function () {
+      chkObra.itens = chkObra.itens.filter(function (it) { return it.id !== item.id; });
+      chkObraRender();
+      toast('Item desativado');
+    }).catch(function (e) {
+      console.error(e);
+      toast(chkObraErroDe(e), 'erro');
+    });
+  }
+
+  function chkObraAdicionar(ev) {
+    ev.preventDefault();
+    if (!exigirAdmin('Somente o Admin pode gerenciar o checklist por obra.')) return;
+    var campo = $('#chkObraNovoRotulo');
+    var valor = String((campo && campo.value) || '').trim();
+    if (!chkObraRotuloOk(valor)) {
+      toast('O rótulo deve ter de 1 a 60 caracteres.', 'erro');
+      if (campo) campo.focus();
+      return;
+    }
+    if (!chkObra.obra) {
+      toast('Carregue os itens de uma obra antes de adicionar.', 'erro');
+      return;
+    }
+    apiPost('/checklist', { obra: chkObra.obra, rotulo: valor, ordem: chkObra.itens.length + 1 }).then(function () {
+      toast('Item adicionado');
+      if (campo) campo.value = '';
+      chkObraCarregar();
+    }).catch(function (e) {
+      console.error(e);
+      toast(chkObraErroDe(e), 'erro');
+    });
+  }
+
+  function chkObraCriarPadroes() {
+    if (!exigirAdmin('Somente o Admin pode gerenciar o checklist por obra.')) return;
+    if (!chkObra.obra) return;
+    var promessas = CHK_PADRAO.map(function (rotulo, i) {
+      return apiPost('/checklist', { obra: chkObra.obra, rotulo: rotulo, ordem: i + 1 });
+    });
+    Promise.all(promessas).then(function () {
+      toast('Itens padrão criados nesta obra');
+      chkObraCarregar();
+    }).catch(function (e) {
+      console.error(e);
+      toast(chkObraErroDe(e), 'erro');
+      chkObraCarregar();
+    });
+  }
+
+  function chkObraInit() {
+    var sec = $('#checklistObraSec');
+    if (!sec) return;
+    var btn = $('#btnChkObraCarregar');
+    if (btn) btn.addEventListener('click', chkObraCarregar);
+    var campo = $('#chkObraInput');
+    if (campo) {
+      campo.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          chkObraCarregar();
+        }
+      });
+    }
+    var form = $('#chkObraNovo');
+    if (form) form.addEventListener('submit', chkObraAdicionar);
+    var lista = $('#chkObraLista');
+    if (lista) {
+      lista.addEventListener('click', function (ev) {
+        var botao = ev.target.closest('[data-act]');
+        if (!botao) return;
+        var act = botao.getAttribute('data-act');
+        if (act === 'subir') chkObraMover(botao, -1);
+        else if (act === 'descer') chkObraMover(botao, 1);
+        else if (act === 'desativar') chkObraDesativar(botao);
+      });
+      lista.addEventListener('change', function (ev) {
+        var input = ev.target.closest('.chkobra-rotulo');
+        if (input) chkObraSalvarRotulo(input);
+      });
+    }
+    var padroes = $('#btnChkObraPadroes');
+    if (padroes) padroes.addEventListener('click', chkObraCriarPadroes);
+    chkObraRender();
   }
 
   function registrarEntrada(ev) {
@@ -2200,4 +2438,5 @@
 
   boot();
   checklistInit();
+  chkObraInit();
 })();
