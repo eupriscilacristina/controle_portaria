@@ -2039,18 +2039,24 @@ table.espelho {
   }
 
   .bottom-nav {
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    max-width: none;
-    transform: none;
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 2px;
-    overflow: hidden;
-    border-radius: 16px 16px 0 0;
-    padding: 0 0 env(safe-area-inset-bottom);
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    gap: 0;
+    overflow: hidden !important;
+    border-radius: 16px 16px 0 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   .nav-btn,
@@ -2059,34 +2065,35 @@ table.espelho {
   }
 
   .bottom-nav .nav-btn {
-    flex: 1 1 0;
-    min-width: 0;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
     min-height: 56px;
-    padding: 6px 2px;
+    padding: 6px 2px !important;
+    gap: 2px !important;
     border-radius: 0;
     justify-content: center;
-    gap: 3px;
-    font-size: 11px;
+    font-size: 10px;
     overflow: hidden;
   }
 
   .bottom-nav .nav-btn svg {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0 !important;
   }
 
   .bottom-nav .nav-btn span {
     display: block;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 11px;
+    font-size: 10px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    line-height: 1.15;
   }
 
   .bottom-nav .nav-btn.active {
-    transform: none;
+    transform: none !important;
     box-shadow: none;
     font-weight: 600;
   }
