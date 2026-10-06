@@ -529,6 +529,26 @@
     return partes.filter(Boolean).map(esc).join(' · ');
   }
 
+  function botoesFotoHTML(a) {
+    var b = '';
+    if (a.temFotoPlaca === true) {
+      b += '<button type="button" class="btn ghost sm" data-act="verPlaca" data-id="' + esc(a.id) + '">Ver placa</button>';
+    }
+    if (a.temFotoDocumento === true) {
+      b += '<button type="button" class="btn ghost sm" data-act="verDocumento" data-id="' + esc(a.id) + '">Ver documento</button>';
+    }
+    return b;
+  }
+
+  function avisoFlagsFotosHTML(itens) {
+    var semFlags = itens.some(function (a) {
+      return a.temFotoPlaca === undefined && a.temFotoDocumento === undefined;
+    });
+    return semFlags
+      ? '<div class="fotos-resumo">A listagem não informou temFotoPlaca/temFotoDocumento — não é possível saber quais registros têm foto.</div>'
+      : '';
+  }
+
   function itemDentroHTML(a) {
     var e = toDate(a.dataEntrada);
     var tempo = e ? fmtDur(Date.now() - e.getTime()) : '…';
@@ -546,6 +566,7 @@
       '</div>' +
       '<div class="item-actions">' +
       '<button type="button" class="btn success sm" data-act="saida" data-id="' + esc(a.id) + '">Registrar saída</button>' +
+      botoesFotoHTML(a) +
       cancelar +
       '</div>' +
       '</div>';
@@ -564,6 +585,7 @@
     if (ehAdmin()) {
       acoes += '<button type="button" class="btn danger sm" data-act="excluirAcesso" data-id="' + esc(a.id) + '">Excluir</button>';
     }
+    acoes += botoesFotoHTML(a);
     return '<div class="item">' +
       '<div class="item-main">' +
       '<div class="item-title">' + esc(a.nome) + badge + '</div>' +
@@ -600,9 +622,9 @@
     });
     $('#dentroContagem').textContent = itens.length +
       (itens.length === 1 ? ' registro ativo' : ' registros ativos');
-    $('#listaDentro').innerHTML = itens.length
+    $('#listaDentro').innerHTML = avisoFlagsFotosHTML(itens) + (itens.length
       ? itens.map(itemDentroHTML).join('')
-      : '<div class="empty"><strong>Ninguém dentro agora</strong>As entradas registradas aparecem aqui.</div>';
+      : '<div class="empty"><strong>Ninguém dentro agora</strong>As entradas registradas aparecem aqui.</div>');
   }
 
   function acessosFiltrados() {
@@ -628,9 +650,9 @@
   function renderHistorico() {
     var itens = acessosFiltrados();
     $('#histContagem').textContent = itens.length + (itens.length === 1 ? ' registro' : ' registros');
-    $('#listaHistorico').innerHTML = itens.length
+    $('#listaHistorico').innerHTML = avisoFlagsFotosHTML(itens) + (itens.length
       ? itens.map(itemHistHTML).join('')
-      : '<div class="empty"><strong>Nenhum registro encontrado</strong>Ajuste a busca ou os filtros.</div>';
+      : '<div class="empty"><strong>Nenhum registro encontrado</strong>Ajuste a busca ou os filtros.</div>');
   }
 
   function renderCalendario() {
@@ -1209,6 +1231,7 @@
       return;
     }
     chkObra.obra = valor;
+    chkObraFotoCarregar(valor);
     chkObra.itens = [];
     chkObra.erro = '';
     chkObra.carregado = false;
@@ -1633,6 +1656,159 @@
     }
   }
 
+  // ===== Config de fotos da obra (Admin) =====
+  // Bloco "Foto de documento desta obra" da seção Checklist por obra.
+  // Salva via PUT /obras-config; nunca envia tenantId (usa o do token).
+  var chkObraFoto = { obra: '', fotoDocumentoAtiva: false, retencaoDias: 30 };
+
+  function chkObraFotoMsg(txt, erro) {
+    var msg = $('#chkObraFotoMsg');
+    if (!msg) return;
+    msg.textContent = txt || '';
+    msg.classList.toggle('erro', !!erro);
+    msg.hidden = !txt;
+  }
+
+  function chkObraFotoErroDe(e) {
+    var m = /Erro na API: (\d+)/.exec(String((e && e.message) || ''));
+    var st = m ? Number(m[1]) : 0;
+    if (st === 401) return 'Sessão expirada. Faça login novamente.';
+    if (st === 403) return 'Sem permissão para salvar esta configuração.';
+    if (st === 400) return 'Dados inválidos. Use prazo de retenção de 1 a 365 dias.';
+    return 'Erro ao falar com a API.';
+  }
+
+  function chkObraFotoEstado() {
+    var sw = $('#chkObraFotoAtiva');
+    var rot = $('#chkObraFotoEstado');
+    if (rot) rot.textContent = sw && sw.checked ? 'Ligado' : 'Desligado';
+  }
+
+  function chkObraFotoPreencher() {
+    var sw = $('#chkObraFotoAtiva');
+    if (sw) sw.checked = chkObraFoto.fotoDocumentoAtiva === true;
+    var inp = $('#chkObraFotoRetencao');
+    if (inp) inp.value = String(chkObraFoto.retencaoDias);
+    chkObraFotoEstado();
+  }
+
+  function chkObraFotoCarregar(obra) {
+    var bloco = $('#chkObraFoto');
+    if (!bloco) return;
+    var valor = String(obra == null ? '' : obra).trim();
+    chkObraFoto.obra = '';
+    bloco.hidden = true;
+    chkObraFotoMsg('');
+    if (!valor) return;
+    apiGet('/obras-config?obra=' + encodeURIComponent(valor)).then(function (r) {
+      if (chkObra.obra !== valor) return;
+      chkObraFoto.obra = valor;
+      chkObraFoto.fotoDocumentoAtiva = !!(r && r.fotoDocumentoAtiva === true);
+      chkObraFoto.retencaoDias = (r && Number.isInteger(r.retencaoDias)) ? r.retencaoDias : 30;
+      chkObraFotoPreencher();
+      chkObraFotoMsg('');
+      bloco.hidden = false;
+    }).catch(function (e) {
+      toast(chkObraFotoErroDe(e), 'erro');
+    });
+  }
+
+  function chkObraFotoSalvar() {
+    if (!exigirAdmin('Somente o Admin pode gerenciar o checklist por obra.')) return;
+    if (!chkObraFoto.obra) {
+      chkObraFotoMsg('Carregue uma obra antes de salvar.', true);
+      return;
+    }
+    var sw = $('#chkObraFotoAtiva');
+    var inp = $('#chkObraFotoRetencao');
+    var ativa = sw ? sw.checked === true : false;
+    var dias = Number(inp && inp.value);
+    if (!Number.isInteger(dias) || dias < 1 || dias > 365) {
+      chkObraFotoMsg('O prazo deve ser um número inteiro de 1 a 365 dias.', true);
+      return;
+    }
+    apiPut('/obras-config', {
+      obra: chkObraFoto.obra,
+      fotoDocumentoAtiva: ativa,
+      retencaoDias: dias
+    }).then(function () {
+      chkObraFoto.fotoDocumentoAtiva = ativa;
+      chkObraFoto.retencaoDias = dias;
+      chkObraFotoMsg('Configuração salva.');
+    }).catch(function (e) {
+      chkObraFotoMsg(chkObraFotoErroDe(e), true);
+    });
+  }
+
+  function chkObraFotoInit() {
+    var sw = $('#chkObraFotoAtiva');
+    if (sw) sw.addEventListener('change', chkObraFotoEstado);
+    var btn = $('#btnChkObraFotoSalvar');
+    if (btn) btn.addEventListener('click', chkObraFotoSalvar);
+  }
+
+  // ===== Modal de visualização de fotos =====
+  // Busca a imagem com o token do app, mostra em tela cheia e libera a
+  // URL temporária ao fechar. Nada é guardado no navegador.
+  var fotoModalUrl = null;
+  var fotoModalSeq = 0;
+
+  function fotoModalFechar() {
+    if (fotoModalUrl) {
+      URL.revokeObjectURL(fotoModalUrl);
+      fotoModalUrl = null;
+    }
+    var img = $('#fotoModalImg');
+    if (img) {
+      img.removeAttribute('src');
+      img.hidden = true;
+    }
+    var erro = $('#fotoModalErro');
+    if (erro) {
+      erro.textContent = '';
+      erro.hidden = true;
+    }
+    var modal = $('#fotoModal');
+    if (modal) modal.hidden = true;
+  }
+
+  function verFoto(acessoId, tipo) {
+    var modal = $('#fotoModal');
+    var img = $('#fotoModalImg');
+    var erro = $('#fotoModalErro');
+    if (!modal || !img) return;
+    var seq = ++fotoModalSeq;
+    fotoModalFechar();
+    modal.hidden = false;
+    fetch(API_BASE + '/fotos/acessos/' + encodeURIComponent(acessoId) + '/' + tipo, {
+      method: 'GET',
+      headers: { Authorization: 'Bearer ' + getToken() }
+    }).then(function (res) {
+      if (res.status === 403) throw new Error('Sem permissão para ver esta foto');
+      if (res.status === 404) throw new Error('Foto não encontrada ou já apagada');
+      if (!res.ok) throw new Error('Erro ao carregar a foto');
+      return res.blob();
+    }).then(function (blob) {
+      if (seq !== fotoModalSeq) return;
+      fotoModalUrl = URL.createObjectURL(blob);
+      img.src = fotoModalUrl;
+      img.hidden = false;
+    }).catch(function (e) {
+      if (seq !== fotoModalSeq) return;
+      if (erro) {
+        erro.textContent = String((e && e.message) || 'Erro ao carregar a foto');
+        erro.hidden = false;
+      }
+    });
+  }
+
+  function fotoModalInit() {
+    var fechar = $('#fotoModalFechar');
+    if (fechar) fechar.addEventListener('click', fotoModalFechar);
+    var fundo = $('#fotoModalFundo');
+    if (fundo) fundo.addEventListener('click', fotoModalFechar);
+  }
+
   function registrarEntrada(ev) {
     ev.preventDefault();
     var tipo = state.tipo;
@@ -1956,6 +2132,8 @@
       'Excluir todos os horários de ' + btn.getAttribute('data-nome') + ' nesta semana?'
     );
     else if (act === 'entrada') entradaRapida(id);
+    else if (act === 'verPlaca') verFoto(id, 'placa');
+    else if (act === 'verDocumento') verFoto(id, 'documento');
     else if (act === 'editar') editarPessoa(id);
     else if (act === 'excluirPessoa') excluirPessoa(id);
   }
@@ -2701,4 +2879,6 @@
   checklistInit();
   fotosInit();
   chkObraInit();
+  chkObraFotoInit();
+  fotoModalInit();
 })();

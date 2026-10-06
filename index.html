@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=66">
+  <link rel="stylesheet" href="css/styles.css?v=67">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#f97316">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -448,6 +448,24 @@
           <button type="button" class="btn ghost sm" id="btnChkObraCarregar">Carregar itens</button>
         </div>
         <div class="chkobra-lista" id="chkObraLista"></div>
+        <div class="config-foto" id="chkObraFoto" hidden>
+          <h3 class="chkobra-sub">Foto de documento desta obra</h3>
+          <p class="config-foto-nota">A foto do documento é dado pessoal. Ela é apagada automaticamente após o prazo.</p>
+          <div class="config-foto-linha">
+            <span class="config-foto-rotulo">Foto de documento</span>
+            <label class="config-switch">
+              <input type="checkbox" id="chkObraFotoAtiva" aria-label="Foto de documento">
+              <span class="config-switch-trilho"></span>
+            </label>
+            <span class="config-foto-estado" id="chkObraFotoEstado">Desligado</span>
+          </div>
+          <div class="field">
+            <label for="chkObraFotoRetencao">Prazo de retenção (dias)</label>
+            <input type="number" id="chkObraFotoRetencao" min="1" max="365" step="1" inputmode="numeric" value="30">
+          </div>
+          <button type="button" class="btn primary sm" id="btnChkObraFotoSalvar">Salvar</button>
+          <p class="config-foto-msg" id="chkObraFotoMsg" role="alert" hidden></p>
+        </div>
         <form id="chkObraNovo" class="chkobra-novo" autocomplete="off">
           <h3 class="chkobra-sub">Novo item</h3>
           <div class="chkobra-novo-row">
@@ -523,6 +541,15 @@
     </button>
   </nav>
 
+  <div class="foto-modal" id="fotoModal" hidden>
+    <div class="foto-modal-fundo" id="fotoModalFundo"></div>
+    <div class="foto-modal-caixa">
+      <button type="button" class="btn ghost foto-modal-fechar" id="fotoModalFechar">Fechar</button>
+      <img class="foto-modal-img" id="fotoModalImg" alt="Foto do registro" hidden>
+      <p class="foto-modal-erro" id="fotoModalErro" role="alert" hidden></p>
+    </div>
+  </div>
+
   <div class="toast" id="toast" role="status"></div>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -531,7 +558,7 @@
   <script defer src="js/firebase-config.js?v=4"></script>
   <script defer src="js/api-config.js?v=1"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=64"></script>
+  <script defer src="js/app.js?v=65"></script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js');});}</script>
 </body>
 
