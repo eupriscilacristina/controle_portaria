@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=65">
+  <link rel="stylesheet" href="css/styles.css?v=66">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#f97316">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -191,6 +191,28 @@
             <div class="field">
               <label for="regAtividade">Atividade</label>
               <input id="regAtividade" maxlength="80" placeholder="Ex.: Fornecedor, entrega, visita…">
+            </div>
+            <div class="field full foto-bloco grupo-veiculo" id="fotoPlacaBloco">
+              <span class="foto-titulo">Foto da placa</span>
+              <input type="file" id="fotoPlacaInput" accept="image/*" capture="environment" hidden>
+              <button type="button" class="btn ghost foto-botao" id="fotoPlacaBotao">Tirar foto da placa</button>
+              <div class="foto-previa" id="fotoPlacaPrevia" hidden>
+                <img class="foto-miniatura" id="fotoPlacaImg" alt="Prévia da foto da placa">
+                <button type="button" class="btn ghost sm" id="fotoPlacaRemover">Remover</button>
+              </div>
+            </div>
+            <div class="field full foto-bloco" id="fotoDocBloco" hidden>
+              <span class="foto-titulo">Foto do documento</span>
+              <input type="file" id="fotoDocInput" accept="image/*" capture="environment" hidden>
+              <button type="button" class="btn ghost foto-botao" id="fotoDocBotao">Tirar foto do documento</button>
+              <div class="foto-previa" id="fotoDocPrevia" hidden>
+                <img class="foto-miniatura" id="fotoDocImg" alt="Prévia da foto do documento">
+                <button type="button" class="btn ghost sm" id="fotoDocRemover">Remover</button>
+              </div>
+            </div>
+            <div class="field full foto-resumo" id="fotoResumo" hidden>
+              <p class="foto-aviso" id="fotoAviso" role="alert"></p>
+              <button type="button" class="btn ghost sm" id="fotoTentar" hidden>Tentar de novo</button>
             </div>
             <div class="field full checklist-bloco" id="checklistBloco">
               <div class="checklist-head">
@@ -509,7 +531,7 @@
   <script defer src="js/firebase-config.js?v=4"></script>
   <script defer src="js/api-config.js?v=1"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=63"></script>
+  <script defer src="js/app.js?v=64"></script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js');});}</script>
 </body>
 

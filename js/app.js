@@ -1374,6 +1374,265 @@
     chkObraRender();
   }
 
+  // ===== Fotos de entrada (placa e documento) =====
+  // As imagens são reduzidas no aparelho (canvas → JPEG) e guardadas só em
+  // memória, nunca em localStorage/IndexedDB. O envio acontece somente após
+  // o registro da entrada ser salvo, usando o id devolvido pela API.
+  var FOTO_LADO_MAX = 1280;
+  var FOTO_QUALIDADE_INICIAL = 0.7;
+  var FOTO_MAX_BYTES = 1800 * 1024;
+  var FOTO_DOC_DEBOUNCE_MS = 500;
+
+  var fotos = { placa: null, documento: null, docAtiva: false, seq: 0, timer: null };
+  var fotosPendentes = { acessoId: null, itens: [] };
+
+  function fotoReduzir(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var ladoMaior = Math.max(img.naturalWidth, img.naturalHeight) || 1;
+        var escala = ladoMaior > FOTO_LADO_MAX ? FOTO_LADO_MAX / ladoMaior : 1;
+        var w = Math.max(1, Math.round(img.naturalWidth * escala));
+        var h = Math.max(1, Math.round(img.naturalHeight * escala));
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        var qualidade = FOTO_QUALIDADE_INICIAL;
+        (function gerar() {
+          canvas.toBlob(function (blob) {
+            if (!blob) {
+              reject(new Error('Falha ao processar a imagem'));
+              return;
+            }
+            if (blob.size > FOTO_MAX_BYTES && qualidade > 0.1) {
+              qualidade = Math.max(0.1, qualidade - 0.1);
+              gerar();
+              return;
+            }
+            resolve(blob);
+          }, 'image/jpeg', qualidade);
+        })();
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error('Imagem inválida'));
+      };
+      img.src = url;
+    });
+  }
+
+  function fotoRevogar(tipo) {
+    var atual = fotos[tipo];
+    if (atual && atual.url) URL.revokeObjectURL(atual.url);
+    fotos[tipo] = null;
+  }
+
+  function fotoRemover(tipo) {
+    fotoRevogar(tipo);
+    var input = tipo === 'placa' ? $('#fotoPlacaInput') : $('#fotoDocInput');
+    var previa = tipo === 'placa' ? $('#fotoPlacaPrevia') : $('#fotoDocPrevia');
+    if (input) input.value = '';
+    if (previa) previa.hidden = true;
+  }
+
+  function fotoLimpar() {
+    fotoRemover('placa');
+    fotoRemover('documento');
+  }
+
+  function fotoDefinir(tipo, blob) {
+    fotoRevogar(tipo);
+    var url = URL.createObjectURL(blob);
+    fotos[tipo] = { blob: blob, url: url };
+    var img = tipo === 'placa' ? $('#fotoPlacaImg') : $('#fotoDocImg');
+    var previa = tipo === 'placa' ? $('#fotoPlacaPrevia') : $('#fotoDocPrevia');
+    if (img) img.src = url;
+    if (previa) previa.hidden = false;
+  }
+
+  function fotoAoEscolher(tipo, input) {
+    var file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    fotoReduzir(file).then(function (blob) {
+      fotoDefinir(tipo, blob);
+    }).catch(function () {
+      fotoRemover(tipo);
+      toast('Não foi possível processar a imagem escolhida', 'erro');
+    });
+  }
+
+  function fotoDocAtualizar(obra) {
+    var seq = ++fotos.seq;
+    var valor = String(obra == null ? '' : obra).trim();
+    var bloco = $('#fotoDocBloco');
+    if (!bloco) return;
+    if (!valor) {
+      fotos.docAtiva = false;
+      bloco.hidden = true;
+      fotoRemover('documento');
+      return;
+    }
+    apiGet('/obras-config/status?obra=' + encodeURIComponent(valor)).then(function (r) {
+      if (seq !== fotos.seq) return;
+      var ativa = !!(r && r.fotoDocumentoAtiva === true);
+      fotos.docAtiva = ativa;
+      bloco.hidden = !ativa;
+      if (!ativa) fotoRemover('documento');
+    }).catch(function () {
+      if (seq !== fotos.seq) return;
+      fotos.docAtiva = false;
+      bloco.hidden = true;
+      fotoRemover('documento');
+    });
+  }
+
+  function fotoPrepararEnvio() {
+    var itens = [];
+    if (state.tipo === 'veiculo' && fotos.placa) itens.push({ tipo: 'placa', blob: fotos.placa.blob });
+    if (fotos.documento) itens.push({ tipo: 'documento', blob: fotos.documento.blob });
+    return itens;
+  }
+
+  function fotoUpload(acessoId, item) {
+    var form = new FormData();
+    form.append('foto', item.blob, 'foto.jpg');
+    return fetch(API_BASE + '/fotos/acessos/' + encodeURIComponent(acessoId) + '/' + item.tipo, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + getToken() },
+      body: form
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Falha no envio da foto');
+    });
+  }
+
+  function fotoEnviarItens(acessoId, itens) {
+    var falhas = [];
+    var cadeia = Promise.resolve();
+    itens.forEach(function (item) {
+      cadeia = cadeia.then(function () {
+        return fotoUpload(acessoId, item).catch(function () {
+          falhas.push(item);
+        });
+      });
+    });
+    return cadeia.then(function () { return falhas; });
+  }
+
+  function fotoMensagemFalha(itens, aposRegistro) {
+    var rotulos = itens.map(function (it) {
+      return it.tipo === 'placa' ? 'a foto da placa' : 'a foto do documento';
+    });
+    var sujeito = rotulos.length === 1 ? rotulos[0] : rotulos[0] + ' e ' + rotulos[1];
+    var verbo = rotulos.length === 1 ? 'não foi enviada' : 'não foram enviadas';
+    return aposRegistro
+      ? 'Entrada registrada, mas ' + sujeito + ' ' + verbo
+      : sujeito.charAt(0).toUpperCase() + sujeito.slice(1) + ' ' + verbo + '. Tente de novo.';
+  }
+
+  function fotoResumoMostrar(msg, comRetry) {
+    var resumo = $('#fotoResumo');
+    var aviso = $('#fotoAviso');
+    var botao = $('#fotoTentar');
+    if (aviso) aviso.textContent = msg;
+    if (botao) botao.hidden = !comRetry;
+    if (resumo) resumo.hidden = false;
+  }
+
+  function fotoResumoLimpar() {
+    var resumo = $('#fotoResumo');
+    var aviso = $('#fotoAviso');
+    var botao = $('#fotoTentar');
+    if (aviso) aviso.textContent = '';
+    if (botao) botao.hidden = true;
+    if (resumo) resumo.hidden = true;
+  }
+
+  function fotoEnviarOuAvisar(acessoId, itens) {
+    if (!itens.length) return;
+    if (!acessoId) {
+      fotoResumoMostrar('Entrada registrada, mas o id do acesso não foi obtido — não foi possível enviar as fotos', false);
+      return;
+    }
+    fotoEnviarItens(acessoId, itens).then(function (falhas) {
+      if (!falhas.length) {
+        fotosPendentes = { acessoId: null, itens: [] };
+        fotoResumoLimpar();
+        return;
+      }
+      fotosPendentes = { acessoId: acessoId, itens: falhas };
+      fotoResumoMostrar(fotoMensagemFalha(falhas, true), true);
+    });
+  }
+
+  function fotoTentarDeNovo() {
+    if (!fotosPendentes.acessoId || !fotosPendentes.itens.length) return;
+    var acessoId = fotosPendentes.acessoId;
+    var itens = fotosPendentes.itens.slice();
+    fotoEnviarItens(acessoId, itens).then(function (falhas) {
+      if (!falhas.length) {
+        fotosPendentes = { acessoId: null, itens: [] };
+        fotoResumoLimpar();
+        toast('Fotos enviadas');
+        return;
+      }
+      fotosPendentes.itens = falhas;
+      fotoResumoMostrar(fotoMensagemFalha(falhas, false), true);
+    });
+  }
+
+  function fotosInit() {
+    var placaInput = $('#fotoPlacaInput');
+    var docInput = $('#fotoDocInput');
+    if (placaInput) {
+      placaInput.addEventListener('change', function () { fotoAoEscolher('placa', placaInput); });
+    }
+    if (docInput) {
+      docInput.addEventListener('change', function () { fotoAoEscolher('documento', docInput); });
+    }
+    var placaBotao = $('#fotoPlacaBotao');
+    if (placaBotao && placaInput) {
+      placaBotao.addEventListener('click', function () { placaInput.click(); });
+    }
+    var docBotao = $('#fotoDocBotao');
+    if (docBotao && docInput) {
+      docBotao.addEventListener('click', function () { docInput.click(); });
+    }
+    var placaRemover = $('#fotoPlacaRemover');
+    if (placaRemover) {
+      placaRemover.addEventListener('click', function () { fotoRemover('placa'); });
+    }
+    var docRemover = $('#fotoDocRemover');
+    if (docRemover) {
+      docRemover.addEventListener('click', function () { fotoRemover('documento'); });
+    }
+    var tentar = $('#fotoTentar');
+    if (tentar) tentar.addEventListener('click', fotoTentarDeNovo);
+
+    var form = $('#formEntrada');
+    if (form) {
+      form.addEventListener('reset', function () {
+        fotoLimpar();
+        fotoDocAtualizar('');
+      });
+    }
+
+    var obra = $('#regObra');
+    if (obra) {
+      obra.addEventListener('input', function () {
+        clearTimeout(fotos.timer);
+        fotos.timer = setTimeout(function () {
+          fotoDocAtualizar(obra.value);
+        }, FOTO_DOC_DEBOUNCE_MS);
+      });
+      fotoDocAtualizar(obra.value);
+    }
+  }
+
   function registrarEntrada(ev) {
     ev.preventDefault();
     var tipo = state.tipo;
@@ -1442,12 +1701,14 @@
 
     if (checklist.itens.length) data.checklist = checklistPayload();
 
-    docAdd('acessos', data).then(function () {
+    docAdd('acessos', data).then(function (idAcesso) {
+      var fotosParaEnviar = fotoPrepararEnvio();
       toast('Entrada registrada · ' + nome);
       $('#formEntrada').reset();
       setTipo(state.tipo);
       checklistReset();
       $('#regNome').focus();
+      fotoEnviarOuAvisar(idAcesso, fotosParaEnviar);
     }).catch(function (e) {
       console.error(e);
       toast('Erro ao salvar. Verifique o Firebase.', 'erro');
@@ -2438,5 +2699,6 @@
 
   boot();
   checklistInit();
+  fotosInit();
   chkObraInit();
 })();
