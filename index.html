@@ -10,12 +10,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=69">
+  <link rel="stylesheet" href="css/styles.css?v=70">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#f97316">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-title" content="Portaria">
+  <meta name="apple-mobile-web-app-title" content="eu-gestão">
+  <meta name="mobile-web-app-title" content="eu-gestão">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 
@@ -636,6 +637,8 @@
 
   <div class="toast" id="toast" role="status"></div>
 
+  <div class="offline-aviso" id="offlineAviso" role="status" hidden>Sem conexão</div>
+
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -643,7 +646,23 @@
   <script defer src="js/api-config.js?v=2"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
   <script defer src="js/app.js?v=67"></script>
-  <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js');});}</script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+    (function () {
+      var aviso = document.getElementById('offlineAviso');
+      if (!aviso) return;
+      function atualizar() {
+        aviso.hidden = navigator.onLine !== false;
+      }
+      window.addEventListener('online', atualizar);
+      window.addEventListener('offline', atualizar);
+      atualizar();
+    })();
+  </script>
 </body>
 
 </html>

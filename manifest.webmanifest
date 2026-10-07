@@ -1,6 +1,6 @@
 {
-  "name": "Controle de Portaria",
-  "short_name": "Portaria",
+  "name": "eu-gestão",
+  "short_name": "eu-gest",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -20,6 +20,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/icon-maskable-512.png",
