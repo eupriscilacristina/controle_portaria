@@ -1,3 +1,8 @@
+const SUPORTE_WHATSAPP = {
+  numero: '5532991664351',
+  mensagem: 'Olá, preciso de suporte no eu-gestão.'
+};
+
 (function () {
   'use strict';
 
@@ -2587,7 +2592,16 @@
   }
 
   function bind() {
+    var linkSuporte = 'https://wa.me/' + SUPORTE_WHATSAPP.numero +
+      '?text=' + encodeURIComponent(SUPORTE_WHATSAPP.mensagem);
+    $$('.js-suporte-whats').forEach(function (a) {
+      a.href = linkSuporte;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+    });
+
     $$('.nav-btn').forEach(function (b) {
+      if (!b.hasAttribute('data-tab')) return;
       b.addEventListener('click', function () {
         setTab(b.getAttribute('data-tab'));
       });

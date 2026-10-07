@@ -2627,7 +2627,7 @@ table.espelho {
   color: var(--danger);
 }
 
-/* ===== Modal de visualização de fotos ===== */
+/* ===== Modal de visualizaï¿½ï¿½o de fotos ===== */
 .foto-modal {
   position: fixed;
   inset: 0;
@@ -2726,6 +2726,73 @@ table.espelho {
 
   .foto-modal-fechar {
     width: 100%;
+    min-height: 48px;
+    font-size: 16px;
+  }
+}
+
+/* ===== Suporte via WhatsApp ===== */
+.suporte-wa-login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 14px;
+  padding: 11px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: #3a3d42;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.05s ease;
+}
+
+.suporte-wa-login:hover {
+  background: #f6f7f9;
+  border-color: rgba(246, 107, 25, 0.4);
+  color: #111214;
+}
+
+.suporte-wa-login:active {
+  transform: scale(0.98);
+}
+
+.suporte-wa-login svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.nav-suporte {
+  text-decoration: none;
+  color: var(--muted);
+  min-height: 44px;
+}
+
+.nav-suporte:hover {
+  color: var(--text);
+}
+
+.nav-suporte:focus-visible,
+.suporte-wa-login:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .nav-suporte {
+    min-height: 56px;
+  }
+}
+
+@media (max-width: 400px) {
+  .suporte-wa-login {
     min-height: 48px;
     font-size: 16px;
   }
