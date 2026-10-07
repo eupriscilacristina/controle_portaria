@@ -11,6 +11,8 @@ const SUPORTE_WHATSAPP = {
     tipo: 'veiculo',
     acessos: [],
     pessoas: [],
+    usuarios: [],
+    usuSenhaId: null,
     demo: true,
     sessao: null,
     editPessoaId: null,
@@ -264,8 +266,11 @@ const SUPORTE_WHATSAPP = {
   function sessaoDe(user, fallback) {
     var u = user || {};
     return {
-      usuario: u.usuario || u.email || u.login || u.nome || fallback || '',
-      papel: u.papel || u.role || u.perfil || u.tipo || null
+      id: u.id || null,
+      usuario: u.usuario || u.username || u.email || u.login || u.nome || fallback || '',
+      nome: u.nome || null,
+      papel: u.papel || u.role || u.perfil || u.tipo || null,
+      deveTrocarSenha: u.deveTrocarSenha === true
     };
   }
 
@@ -456,8 +461,8 @@ const SUPORTE_WHATSAPP = {
 
   function ehAdmin() {
     if (!state.sessao) return false;
-    return String(state.sessao.usuario || '').toLowerCase() === 'admin' ||
-      String(state.sessao.papel || '').toLowerCase() === 'admin';
+    if (state.sessao.papel) return String(state.sessao.papel).toLowerCase() === 'admin';
+    return String(state.sessao.usuario || '').toLowerCase() === 'admin';
   }
 
   function exigirAdmin(mensagem) {
@@ -482,9 +487,11 @@ const SUPORTE_WHATSAPP = {
     if (nav) nav.hidden = !admin;
     var navHist = $('#navHistorico');
     if (navHist) navHist.hidden = !admin;
+    var navUsu = $('#navUsuarios');
+    if (navUsu) navUsu.hidden = !admin;
     var co = $('#checklistObraSec');
     if (co) co.hidden = !admin;
-    if (!admin && (state.tab === 'pessoas' || state.tab === 'historico')) setTab('registrar');
+    if (!admin && (state.tab === 'pessoas' || state.tab === 'historico' || state.tab === 'usuarios')) setTab('registrar');
   }
 
   function animarNumero(el, novo) {
@@ -964,7 +971,7 @@ const SUPORTE_WHATSAPP = {
   }
 
   function setTab(name) {
-    if ((name === 'pessoas' || name === 'historico') && !ehAdmin()) {
+    if ((name === 'pessoas' || name === 'historico' || name === 'usuarios') && !ehAdmin()) {
       toast('Acesso restrito ao Admin.', 'erro');
       name = 'registrar';
     }
@@ -979,6 +986,7 @@ const SUPORTE_WHATSAPP = {
     if (name === 'semanal') renderSemanal();
     if (name === 'historico') { renderHistorico(); renderCalendario(); }
     if (name === 'pessoas') renderPessoas();
+    if (name === 'usuarios') usuariosCarregar();
     if (name === 'manual') renderManual();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -1814,6 +1822,242 @@ const SUPORTE_WHATSAPP = {
     if (fundo) fundo.addEventListener('click', fotoModalFechar);
   }
 
+  // ===== Gestão de usuários (somente ADMIN) =====
+  var USU_SENHA_PADRAO = 'Senha123';
+  var USU_USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+
+  // 401/403 encerram a sessão; demais erros viram toast com a mensagem da API.
+  function usuariosTratarErro(e, contexto) {
+    var st = e && e.status;
+    if (st === 401 || st === 403) {
+      sessaoEncerrada('Sessão expirada. Faça login novamente.');
+      return;
+    }
+    console.error(e);
+    toast((e && e.mensagem) || contexto || 'Erro na API', 'erro');
+  }
+
+  function itemUsuarioHTML(u) {
+    var nome = u.nome || '';
+    var ident = u.username || u.email || '';
+    var admin = String(u.role || '').toUpperCase() === 'ADMIN';
+    var ativo = u.ativo !== false;
+    var pendente = u.deveTrocarSenha === true;
+    var souEu = !!(state.sessao && u.id && state.sessao.id && String(u.id) === String(state.sessao.id));
+
+    var selos = '<span class="badge ' + (admin ? 'info' : 'off') + '">' + (admin ? 'Admin' : 'Porteiro') + '</span>' +
+      '<span class="badge ' + (ativo ? 'ok' : 'off') + '">' + (ativo ? 'Ativo' : 'Inativo') + '</span>';
+    if (pendente) selos += '<span class="badge warn">Aguardando troca de senha</span>';
+
+    var acoes = '';
+    if (ativo && !souEu) {
+      acoes += '<button type="button" class="btn danger sm" data-act="usuAtivo" data-id="' + esc(u.id) + '">Desativar</button>';
+    } else if (!ativo) {
+      acoes += '<button type="button" class="btn success sm" data-act="usuAtivo" data-id="' + esc(u.id) + '">Ativar</button>';
+    }
+    if (!admin) {
+      acoes += '<button type="button" class="btn ghost sm" data-act="usuSenhaAbrir" data-id="' + esc(u.id) + '">Redefinir senha</button>';
+    }
+
+    var senhaForm = '';
+    if (String(state.usuSenhaId) === String(u.id)) {
+      senhaForm = '<div class="usu-senha-form">' +
+        '<div class="field">' +
+        '<label for="usuSenhaNova">Nova senha</label>' +
+        '<input id="usuSenhaNova" class="usu-senha-nova" type="text" maxlength="72" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" value="' + USU_SENHA_PADRAO + '">' +
+        '</div>' +
+        '<div class="field">' +
+        '<label for="usuSenhaConf">Confirmar senha</label>' +
+        '<input id="usuSenhaConf" class="usu-senha-conf" type="text" maxlength="72" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" value="' + USU_SENHA_PADRAO + '">' +
+        '</div>' +
+        '<div class="usu-senha-acoes">' +
+        '<button type="button" class="btn primary sm" data-act="usuSenhaSalvar" data-id="' + esc(u.id) + '">Salvar senha</button>' +
+        '<button type="button" class="btn ghost sm" data-act="usuSenhaCancelar">Cancelar</button>' +
+        '</div>' +
+        '<p class="usu-form-erro" role="alert" hidden></p>' +
+        '</div>';
+    }
+
+    return '<div class="item with-avatar">' +
+      '<div class="avatar">' + esc(iniciais(nome)) + '</div>' +
+      '<div class="item-main">' +
+      '<div class="item-title">' + esc(nome) + selos + '</div>' +
+      '<div class="item-sub">' + esc(ident) + '</div>' +
+      '</div>' +
+      '<div class="item-actions">' + acoes + '</div>' +
+      senhaForm +
+      '</div>';
+  }
+
+  function renderUsuarios() {
+    var cont = $('#listaUsuarios');
+    if (!cont) return;
+    var contagem = $('#usuariosContagem');
+    if (contagem) {
+      var n = (state.usuarios || []).length;
+      contagem.textContent = n + (n === 1 ? ' usuário' : ' usuários');
+    }
+    if (!state.usuarios || !state.usuarios.length) {
+      cont.innerHTML = '<div class="empty"><strong>Nenhum usuário</strong><p>Crie o primeiro porteiro no formulário acima.</p></div>';
+      return;
+    }
+    cont.innerHTML = state.usuarios.map(itemUsuarioHTML).join('');
+    if (state.usuSenhaId) {
+      var nova = $('#listaUsuarios .usu-senha-nova');
+      if (nova) nova.focus();
+    }
+  }
+
+  function usuariosCarregar() {
+    if (!ehAdmin()) return Promise.resolve();
+    return apiGet('/usuarios').then(function (r) {
+      var lista = Array.isArray(r) ? r : ((r && r.usuarios) || listaDaResposta(r) || []);
+      state.usuarios = lista.slice().sort(function (a, b) {
+        return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+      });
+      renderUsuarios();
+    }).catch(function (e) {
+      usuariosTratarErro(e, 'Erro ao carregar usuários');
+    });
+  }
+
+  function usuariosAviso(msg, erro) {
+    var el = $('#usuCriadoAviso');
+    if (!el) return;
+    el.className = 'usu-aviso' + (erro ? ' erro' : '');
+    el.textContent = msg || '';
+    el.hidden = !msg;
+  }
+
+  function criarUsuario(ev) {
+    ev.preventDefault();
+    if (!exigirAdmin('Somente o Admin pode gerenciar usuários.')) return;
+    var nome = ($('#usuNome').value || '').trim();
+    var username = ($('#usuUsername').value || '').trim();
+    var senha = $('#usuSenha').value;
+    var btn = $('#btnUsuarioCriar');
+
+    usuariosAviso('');
+    if (!nome) {
+      usuariosAviso('Informe o nome completo.', true);
+      return;
+    }
+    if (!USU_USERNAME_RE.test(username)) {
+      usuariosAviso('O usuário deve ter 3 a 20 caracteres, usando apenas letras minúsculas, números e _.', true);
+      return;
+    }
+    if (!senha || senha.length < 8) {
+      usuariosAviso('A senha deve ter no mínimo 8 caracteres.', true);
+      return;
+    }
+
+    btn.disabled = true;
+    apiPost('/usuarios', { nome: nome, username: username, senha: senha }).then(function (r) {
+      var u = (r && r.user) || {};
+      $('#usuNome').value = '';
+      $('#usuUsername').value = '';
+      $('#usuSenha').value = USU_SENHA_PADRAO;
+      usuariosAviso(
+        'Porteiro criado: ' + (u.username || username) + ' (' + (u.nome || nome) + '). ' +
+        'A troca de senha será exigida no primeiro acesso.'
+      );
+      usuariosCarregar();
+    }).catch(function (e) {
+      var st = e && e.status;
+      if (st === 401 || st === 403) {
+        usuariosTratarErro(e);
+        return;
+      }
+      console.error(e);
+      usuariosAviso((e && e.mensagem) || 'Erro ao criar usuário.', true);
+    }).finally(function () {
+      btn.disabled = false;
+    });
+  }
+
+  function alternarUsuarioAtivo(id) {
+    if (!exigirAdmin('Somente o Admin pode gerenciar usuários.')) return;
+    var u = (state.usuarios || []).find(function (x) { return String(x.id) === String(id); });
+    if (!u) return;
+    var ativo = u.ativo !== false;
+    if (ativo && state.sessao && String(u.id) === String(state.sessao.id)) {
+      toast('Não é possível desativar a si mesmo.', 'erro');
+      return;
+    }
+    if (!confirm((ativo ? 'Desativar' : 'Ativar') + ' o usuário ' + (u.username || u.nome || '') + '?')) return;
+    apiPatch('/usuarios/' + encodeURIComponent(id) + '/ativo', { ativo: !ativo }).then(function () {
+      toast(ativo ? 'Usuário desativado.' : 'Usuário ativado.');
+      usuariosCarregar();
+    }).catch(function (e) {
+      usuariosTratarErro(e, 'Erro ao atualizar usuário');
+    });
+  }
+
+  function abrirRedefinirSenha(id) {
+    if (!exigirAdmin('Somente o Admin pode gerenciar usuários.')) return;
+    state.usuSenhaId = String(state.usuSenhaId) === String(id) ? null : id;
+    renderUsuarios();
+  }
+
+  function salvarRedefinicaoSenha(id, btn) {
+    if (!exigirAdmin('Somente o Admin pode gerenciar usuários.')) return;
+    var bloco = btn.closest('.usu-senha-form');
+    var novaEl = bloco ? $('.usu-senha-nova', bloco) : null;
+    var confEl = bloco ? $('.usu-senha-conf', bloco) : null;
+    var erroEl = bloco ? $('.usu-form-erro', bloco) : null;
+    var nova = novaEl ? novaEl.value : '';
+    var conf = confEl ? confEl.value : '';
+
+    function falha(msg) {
+      if (erroEl) {
+        erroEl.textContent = msg;
+        erroEl.hidden = false;
+      }
+    }
+    if (erroEl) erroEl.hidden = true;
+
+    if (!nova || nova.length < 8) {
+      falha('A senha deve ter no mínimo 8 caracteres.');
+      return;
+    }
+    if (nova !== conf) {
+      falha('A confirmação não confere.');
+      return;
+    }
+
+    btn.disabled = true;
+    apiPatch('/usuarios/' + encodeURIComponent(id) + '/senha', { senha: nova }).then(function () {
+      if (novaEl) novaEl.value = '';
+      if (confEl) confEl.value = '';
+      state.usuSenhaId = null;
+      toast('Senha redefinida. A troca será exigida no próximo acesso.');
+      usuariosCarregar();
+    }).catch(function (e) {
+      var st = e && e.status;
+      if (st === 401 || st === 403) {
+        usuariosTratarErro(e);
+        return;
+      }
+      console.error(e);
+      btn.disabled = false;
+      falha((e && e.mensagem) || 'Erro ao redefinir a senha.');
+    });
+  }
+
+  function onUsuariosClick(ev) {
+    var btn = ev.target.closest('[data-act]');
+    if (!btn) return;
+    var act = btn.getAttribute('data-act');
+    var id = btn.getAttribute('data-id');
+    if (act === 'usuAtivo') alternarUsuarioAtivo(id);
+    else if (act === 'usuSenhaAbrir') abrirRedefinirSenha(id);
+    else if (act === 'usuSenhaSalvar') salvarRedefinicaoSenha(id, btn);
+    else if (act === 'usuSenhaCancelar') {
+      state.usuSenhaId = null;
+      renderUsuarios();
+    }
+  }
+
   function registrarEntrada(ev) {
     ev.preventDefault();
     var tipo = state.tipo;
@@ -2624,6 +2868,15 @@ const SUPORTE_WHATSAPP = {
       ev.preventDefault();
       entrar();
     });
+    $('#trocaForm').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      trocarSenha();
+    });
+    $('#formUsuario').addEventListener('submit', criarUsuario);
+    $('#listaUsuarios').addEventListener('click', onUsuariosClick);
+    $('#usuUsername').addEventListener('input', function () {
+      this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    });
     $('#btnSair').addEventListener('click', sair);
 
     $('#regTipoVeiculo').addEventListener('change', atualizarObrigatorioPlaca);
@@ -2768,24 +3021,133 @@ const SUPORTE_WHATSAPP = {
     btn.textContent = 'Entrando…';
     $('#loginErro').textContent = '';
 
-    apiLogin(login, senha).then(function (user) {
+    apiLogin(login, senha).then(function (data) {
+      var user = (data && data.user) || {};
+      var deveTrocar = (data && data.deveTrocarSenha === true) || user.deveTrocarSenha === true;
       state.sessao = sessaoDe(user, login);
-      setUserSalvo({ usuario: state.sessao.usuario, papel: state.sessao.papel });
+      state.sessao.deveTrocarSenha = deveTrocar;
+      setUserSalvo({
+        usuario: state.sessao.usuario,
+        papel: state.sessao.papel,
+        id: state.sessao.id,
+        nome: state.sessao.nome,
+        deveTrocarSenha: deveTrocar
+      });
+      $('#loginSenha').value = '';
+      if (deveTrocar) {
+        mostrarTroca();
+        return;
+      }
       abrirApp();
     }).catch(function (e) {
       console.error(e);
-      $('#loginErro').textContent = 'Usuário ou senha incorretos.';
+      $('#loginErro').textContent = (e && e.status === 429)
+        ? 'Muitas tentativas, aguarde alguns minutos'
+        : 'Credenciais inválidas';
     }).finally(function () {
       btn.disabled = false;
       btn.textContent = 'Entrar';
     });
   }
 
-  // Reabre a sessão com o token JWT salvo. Valida o token com uma chamada
-  // autenticada à API; se a resposta não for ok (401), o token é descartado.
+  // Tela única de troca obrigatória: enquanto não concluir, o app não abre
+  // e nenhuma outra chamada à API é feita.
+  function mostrarTroca() {
+    $('#loginScreen').hidden = true;
+    $('#trocaScreen').hidden = false;
+    $('#trocaSenhaAtual').value = '';
+    $('#trocaSenhaNova').value = '';
+    $('#trocaSenhaConf').value = '';
+    $('#trocaErro').textContent = '';
+    $('#trocaSenhaAtual').focus();
+  }
+
+  function trocarSenha() {
+    var atual = $('#trocaSenhaAtual').value;
+    var nova = $('#trocaSenhaNova').value;
+    var conf = $('#trocaSenhaConf').value;
+    var btn = $('#trocaBtn');
+    var erroEl = $('#trocaErro');
+
+    if (!atual || !nova || !conf) {
+      erroEl.textContent = 'Preencha todos os campos.';
+      return;
+    }
+    if (String(nova).length < 8) {
+      erroEl.textContent = 'A nova senha deve ter no mínimo 8 caracteres.';
+      return;
+    }
+    if (nova === atual) {
+      erroEl.textContent = 'A nova senha deve ser diferente da atual.';
+      return;
+    }
+    if (nova !== conf) {
+      erroEl.textContent = 'A confirmação não confere.';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Salvando…';
+    erroEl.textContent = '';
+
+    apiTrocarSenha(atual, nova).then(function (data) {
+      var user = (data && data.user) || {};
+      state.sessao = sessaoDe(user, state.sessao ? state.sessao.usuario : '');
+      state.sessao.deveTrocarSenha = false;
+      setUserSalvo({
+        usuario: state.sessao.usuario,
+        papel: state.sessao.papel,
+        id: state.sessao.id,
+        nome: state.sessao.nome,
+        deveTrocarSenha: false
+      });
+      $('#trocaSenhaAtual').value = '';
+      $('#trocaSenhaNova').value = '';
+      $('#trocaSenhaConf').value = '';
+      $('#trocaScreen').hidden = true;
+      toast('Senha alterada com sucesso.');
+      abrirApp();
+    }).catch(function (e) {
+      console.error(e);
+      var st = e && e.status;
+      if (st === 401 || st === 403) {
+        sessaoEncerrada('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      erroEl.textContent = (st === 429)
+        ? 'Muitas tentativas, aguarde alguns minutos'
+        : (e && e.mensagem) || 'Não foi possível alterar a senha.';
+    }).finally(function () {
+      btn.disabled = false;
+      btn.textContent = 'Salvar nova senha';
+    });
+  }
+
+  // Limpa a sessão e volta ao login (401/403 na API).
+  function sessaoEncerrada(msg) {
+    clearToken();
+    setUserSalvo(null);
+    try {
+      encerrarSessao();
+    } catch (e) {
+      console.error(e);
+    }
+    toast(msg || 'Sessão expirada. Faça login novamente.', 'erro');
+  }
+
+  // Reabre a sessão com o token JWT salvo. Se a troca de senha ainda estava
+  // pendente, a tela de troca é reaberta sem nenhuma chamada à API. Caso
+  // contrário, o token é validado com uma chamada autenticada; se a resposta
+  // não for ok (401), o token é descartado.
   function restaurarSessao() {
     var salvo = getUserSalvo();
     if (!getToken() || !salvo) return Promise.resolve(false);
+    if (salvo.deveTrocarSenha) {
+      state.sessao = sessaoDe(salvo);
+      state.sessao.deveTrocarSenha = true;
+      mostrarTroca();
+      return Promise.resolve(false);
+    }
     return apiGet('/pessoas').then(function () {
       state.sessao = sessaoDe(salvo);
       abrirApp();
@@ -2823,10 +3185,18 @@ const SUPORTE_WHATSAPP = {
     state.acessos = [];
     state.pessoas = [];
     state.editPessoaId = null;
+    state.usuarios = [];
+    state.usuSenhaId = null;
+    renderUsuarios();
     $('#loginScreen').hidden = false;
+    $('#trocaScreen').hidden = true;
     $('#btnSair').hidden = true;
     $('#loginSenha').value = '';
     $('#loginErro').textContent = '';
+    $('#trocaSenhaAtual').value = '';
+    $('#trocaSenhaNova').value = '';
+    $('#trocaSenhaConf').value = '';
+    $('#trocaErro').textContent = '';
     $('#loginEmail').focus();
     var r = $('#sessaoRotulo');
     if (r) r.hidden = true;
@@ -2840,7 +3210,12 @@ const SUPORTE_WHATSAPP = {
 
   function abrirApp() {
     if (!state.sessao) return;
+    if (state.sessao.deveTrocarSenha) {
+      mostrarTroca();
+      return;
+    }
     $('#loginScreen').hidden = true;
+    $('#trocaScreen').hidden = true;
     $('#btnSair').hidden = false;
     $('#loginSenha').value = '';
     $('#loginErro').textContent = '';

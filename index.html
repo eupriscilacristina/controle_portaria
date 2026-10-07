@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=68">
+  <link rel="stylesheet" href="css/styles.css?v=69">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#f97316">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -30,8 +30,9 @@
       </div>
       <h1>Controle de Portaria</h1>
       <p class="login-sub">Área restrita</p>
-      <label class="login-label" for="loginEmail">Usuário</label>
-      <input id="loginEmail" type="text" autocomplete="username" placeholder="Digite seu usuário" required>
+      <label class="login-label" for="loginEmail">E-mail ou usuário</label>
+      <input id="loginEmail" type="text" autocapitalize="none" autocomplete="username" spellcheck="false"
+        placeholder="Digite seu e-mail ou usuário" required>
       <label class="login-label" for="loginSenha">Senha</label>
       <input id="loginSenha" type="password" autocomplete="current-password" placeholder="Digite sua senha" required>
       <button type="submit" class="btn primary lg" id="loginBtn">Entrar</button>
@@ -44,6 +45,25 @@
         </svg>
         Suporte
       </a>
+    </form>
+  </div>
+
+  <div class="login-screen" id="trocaScreen" hidden>
+    <form class="form-login" id="trocaForm">
+      <div class="login-logo">
+        <img src="TEKNER_marca.png" alt="TEKNER">
+        <div class="logo-slogan">CONSULTORIA EM SEGURANÇA DO TRABALHO</div>
+      </div>
+      <h1>Trocar senha</h1>
+      <p class="login-sub">Defina uma nova senha para continuar.</p>
+      <label class="login-label" for="trocaSenhaAtual">Senha atual</label>
+      <input id="trocaSenhaAtual" type="password" autocomplete="current-password" required>
+      <label class="login-label" for="trocaSenhaNova">Nova senha</label>
+      <input id="trocaSenhaNova" type="password" autocomplete="new-password" required>
+      <label class="login-label" for="trocaSenhaConf">Confirmar nova senha</label>
+      <input id="trocaSenhaConf" type="password" autocomplete="new-password" required>
+      <button type="submit" class="btn primary lg" id="trocaBtn">Salvar nova senha</button>
+      <p class="login-erro" id="trocaErro" role="alert"></p>
     </form>
   </div>
 
@@ -488,6 +508,45 @@
         </form>
       </div>
     </section>
+
+    <section class="tab" id="tab-usuarios">
+      <div class="card">
+        <div class="card-head">
+          <h2>Novo porteiro</h2>
+          <p>Crie o acesso da portaria. A troca de senha será exigida no primeiro acesso.</p>
+        </div>
+        <form id="formUsuario" class="form-grid" autocomplete="off">
+          <div class="field">
+            <label for="usuNome">Nome completo *</label>
+            <input id="usuNome" maxlength="120" required placeholder="Ex.: João da Silva">
+          </div>
+          <div class="field">
+            <label for="usuUsername">Usuário *</label>
+            <input id="usuUsername" maxlength="20" autocapitalize="none" autocomplete="off" spellcheck="false"
+              placeholder="3 a 20 caracteres: a-z, 0-9 e _">
+          </div>
+          <div class="field">
+            <label for="usuSenha">Senha provisória *</label>
+            <input id="usuSenha" type="text" maxlength="72" value="Senha123" autocomplete="off" autocapitalize="off"
+              autocorrect="off" spellcheck="false">
+          </div>
+          <div class="field form-actions">
+            <button type="submit" class="btn primary lg" id="btnUsuarioCriar">Criar porteiro</button>
+          </div>
+          <div class="field full">
+            <p class="usu-aviso" id="usuCriadoAviso" hidden></p>
+          </div>
+        </form>
+      </div>
+
+      <div class="section-head">
+        <div>
+          <h2>Usuários cadastrados</h2>
+          <p id="usuariosContagem">0 usuários</p>
+        </div>
+      </div>
+      <div class="list" id="listaUsuarios"></div>
+    </section>
   </main>
 
   <nav class="bottom-nav" aria-label="Navegação principal">
@@ -547,6 +606,15 @@
       </svg>
       <span>Pessoas</span>
     </button>
+    <button type="button" class="nav-btn" id="navUsuarios" data-tab="usuarios" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <circle cx="12" cy="10" r="2.5" />
+        <path d="M8.5 16.5c.7-1.5 2-2.2 3.5-2.2s2.8.7 3.5 2.2" />
+      </svg>
+      <span>Usuários</span>
+    </button>
     <a class="nav-btn nav-suporte js-suporte-whats" href="https://wa.me/5532991664351" target="_blank"
       rel="noopener noreferrer">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -572,9 +640,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script defer src="js/firebase-config.js?v=4"></script>
-  <script defer src="js/api-config.js?v=1"></script>
+  <script defer src="js/api-config.js?v=2"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=66"></script>
+  <script defer src="js/app.js?v=67"></script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js');});}</script>
 </body>
 

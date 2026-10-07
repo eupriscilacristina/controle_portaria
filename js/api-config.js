@@ -22,16 +22,47 @@ async function apiPing() {
     }
 }
 
-async function apiLogin(email, senha) {
+// Erro com status HTTP e a mensagem vinda da API (campo "error"),
+// sem nunca incluir senhas no texto do erro.
+function erroDeResposta(res, corpo) {
+    var detalhe = '';
+    if (corpo && typeof corpo === 'object') {
+        detalhe = String(corpo.error || corpo.message || corpo.mensagem || '');
+    }
+    var e = new Error('Erro na API: ' + res.status);
+    e.status = res.status;
+    e.mensagem = detalhe;
+    return e;
+}
+
+async function corpoDaResposta(res) {
+    try {
+        return await res.json();
+    } catch (e) {
+        return null;
+    }
+}
+
+async function apiLogin(login, senha) {
     var res = await fetch(API_BASE + '/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, senha: senha }),
+        body: JSON.stringify({ login: login, senha: senha }),
     });
-    if (!res.ok) throw new Error('Login inválido');
-    var data = await res.json();
-    setToken(data.token);
-    return data.user;
+    var corpo = await corpoDaResposta(res);
+    if (!res.ok) throw erroDeResposta(res, corpo);
+    setToken(corpo.token);
+    return corpo;
+}
+
+// Troca obrigatória de senha: recebe o novo token e o usuário atualizado.
+async function apiTrocarSenha(senhaAtual, novaSenha) {
+    var data = await apiFetch('/auth/trocar-senha', {
+        method: 'PATCH',
+        body: JSON.stringify({ senhaAtual: senhaAtual, novaSenha: novaSenha }),
+    });
+    if (data && data.token) setToken(data.token);
+    return data;
 }
 
 async function apiFetch(path, options) {
@@ -41,9 +72,10 @@ async function apiFetch(path, options) {
         options.headers || {}
     );
     var res = await fetch(API_BASE + path, options);
-    if (!res.ok) throw new Error('Erro na API: ' + res.status);
     if (res.status === 204) return null;
-    return res.json();
+    var corpo = await corpoDaResposta(res);
+    if (!res.ok) throw erroDeResposta(res, corpo);
+    return corpo;
 }
 
 function apiGet(path) {
@@ -54,6 +86,9 @@ function apiPost(path, data) {
 }
 function apiPut(path, data) {
     return apiFetch(path, { method: 'PUT', body: JSON.stringify(data) });
+}
+function apiPatch(path, data) {
+    return apiFetch(path, { method: 'PATCH', body: JSON.stringify(data) });
 }
 function apiDelete(path) {
     return apiFetch(path, { method: 'DELETE' });
