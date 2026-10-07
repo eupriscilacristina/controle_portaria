@@ -270,6 +270,7 @@ const SUPORTE_WHATSAPP = {
       usuario: u.usuario || u.username || u.email || u.login || u.nome || fallback || '',
       nome: u.nome || null,
       papel: u.papel || u.role || u.perfil || u.tipo || null,
+      podeGerirUsuarios: u.podeGerirUsuarios === true,
       deveTrocarSenha: u.deveTrocarSenha === true
     };
   }
@@ -471,8 +472,21 @@ const SUPORTE_WHATSAPP = {
     return false;
   }
 
+  // Permissão de gestão de usuários vem do backend (user.podeGerirUsuarios);
+  // ausência vale como false.
+  function podeGerirUsuarios() {
+    return !!(state.sessao && state.sessao.podeGerirUsuarios === true);
+  }
+
+  function exigirGerirUsuarios(mensagem) {
+    if (podeGerirUsuarios()) return true;
+    toast(mensagem || 'Sem permissão para gerir usuários', 'erro');
+    return false;
+  }
+
   function aplicarPermissoes() {
     var admin = ehAdmin();
+    var gerirUsu = podeGerirUsuarios();
     var rotulo = $('#sessaoRotulo');
     if (rotulo) {
       rotulo.textContent = admin ? 'Admin' : 'Portaria';
@@ -488,10 +502,11 @@ const SUPORTE_WHATSAPP = {
     var navHist = $('#navHistorico');
     if (navHist) navHist.hidden = !admin;
     var navUsu = $('#navUsuarios');
-    if (navUsu) navUsu.hidden = !admin;
+    if (navUsu) navUsu.hidden = !gerirUsu;
     var co = $('#checklistObraSec');
     if (co) co.hidden = !admin;
-    if (!admin && (state.tab === 'pessoas' || state.tab === 'historico' || state.tab === 'usuarios')) setTab('registrar');
+    if (!admin && (state.tab === 'pessoas' || state.tab === 'historico')) setTab('registrar');
+    if (!gerirUsu && state.tab === 'usuarios') setTab('registrar');
   }
 
   function animarNumero(el, novo) {
@@ -971,8 +986,12 @@ const SUPORTE_WHATSAPP = {
   }
 
   function setTab(name) {
-    if ((name === 'pessoas' || name === 'historico' || name === 'usuarios') && !ehAdmin()) {
+    if ((name === 'pessoas' || name === 'historico') && !ehAdmin()) {
       toast('Acesso restrito ao Admin.', 'erro');
+      name = 'registrar';
+    }
+    if (name === 'usuarios' && !podeGerirUsuarios()) {
+      toast('Sem permissão para gerir usuários', 'erro');
       name = 'registrar';
     }
     state.tab = name;
@@ -1822,15 +1841,20 @@ const SUPORTE_WHATSAPP = {
     if (fundo) fundo.addEventListener('click', fotoModalFechar);
   }
 
-  // ===== Gestão de usuários (somente ADMIN) =====
+  // ===== Gestão de usuários (somente com permissão de gestão) =====
   var USU_SENHA_PADRAO = 'Senha123';
   var USU_USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
-  // 401/403 encerram a sessão; demais erros viram toast com a mensagem da API.
+  // 401 encerra a sessão; 403 em /usuarios só avisa, sem deslogar;
+  // demais erros viram toast com a mensagem da API.
   function usuariosTratarErro(e, contexto) {
     var st = e && e.status;
-    if (st === 401 || st === 403) {
+    if (st === 401) {
       sessaoEncerrada('Sessão expirada. Faça login novamente.');
+      return;
+    }
+    if (st === 403) {
+      toast('Sem permissão para gerir usuários', 'erro');
       return;
     }
     console.error(e);
@@ -1909,7 +1933,7 @@ const SUPORTE_WHATSAPP = {
   }
 
   function usuariosCarregar() {
-    if (!ehAdmin()) return Promise.resolve();
+    if (!podeGerirUsuarios()) return Promise.resolve();
     return apiGet('/usuarios').then(function (r) {
       var lista = Array.isArray(r) ? r : ((r && r.usuarios) || listaDaResposta(r) || []);
       state.usuarios = lista.slice().sort(function (a, b) {
@@ -1931,7 +1955,7 @@ const SUPORTE_WHATSAPP = {
 
   function criarUsuario(ev) {
     ev.preventDefault();
-    if (!exigirAdmin('Somente o Admin pode gerenciar usuários.')) return;
+    if (!exigirGerirUsuarios('Sem permissão para gerir usuários')) return;
     var nome = ($('#usuNome').value || '').trim();
     var username = ($('#usuUsername').value || '').trim();
     var senha = $('#usuSenha').value;
@@ -1976,7 +2000,7 @@ const SUPORTE_WHATSAPP = {
   }
 
   function alternarUsuarioAtivo(id) {
-    if (!exigirAdmin('Somente o Admin pode gerenciar usuários.')) return;
+    if (!exigirGerirUsuarios('Sem permissão para gerir usuários')) return;
     var u = (state.usuarios || []).find(function (x) { return String(x.id) === String(id); });
     if (!u) return;
     var ativo = u.ativo !== false;
@@ -1994,13 +2018,13 @@ const SUPORTE_WHATSAPP = {
   }
 
   function abrirRedefinirSenha(id) {
-    if (!exigirAdmin('Somente o Admin pode gerenciar usuários.')) return;
+    if (!exigirGerirUsuarios('Sem permissão para gerir usuários')) return;
     state.usuSenhaId = String(state.usuSenhaId) === String(id) ? null : id;
     renderUsuarios();
   }
 
   function salvarRedefinicaoSenha(id, btn) {
-    if (!exigirAdmin('Somente o Admin pode gerenciar usuários.')) return;
+    if (!exigirGerirUsuarios('Sem permissão para gerir usuários')) return;
     var bloco = btn.closest('.usu-senha-form');
     var novaEl = bloco ? $('.usu-senha-nova', bloco) : null;
     var confEl = bloco ? $('.usu-senha-conf', bloco) : null;
@@ -3031,6 +3055,7 @@ const SUPORTE_WHATSAPP = {
         papel: state.sessao.papel,
         id: state.sessao.id,
         nome: state.sessao.nome,
+        podeGerirUsuarios: state.sessao.podeGerirUsuarios,
         deveTrocarSenha: deveTrocar
       });
       $('#loginSenha').value = '';
@@ -3092,13 +3117,18 @@ const SUPORTE_WHATSAPP = {
 
     apiTrocarSenha(atual, nova).then(function (data) {
       var user = (data && data.user) || {};
-      state.sessao = sessaoDe(user, state.sessao ? state.sessao.usuario : '');
+      var anterior = state.sessao;
+      state.sessao = sessaoDe(user, anterior ? anterior.usuario : '');
+      if (user.podeGerirUsuarios === undefined && anterior) {
+        state.sessao.podeGerirUsuarios = anterior.podeGerirUsuarios === true;
+      }
       state.sessao.deveTrocarSenha = false;
       setUserSalvo({
         usuario: state.sessao.usuario,
         papel: state.sessao.papel,
         id: state.sessao.id,
         nome: state.sessao.nome,
+        podeGerirUsuarios: state.sessao.podeGerirUsuarios,
         deveTrocarSenha: false
       });
       $('#trocaSenhaAtual').value = '';
