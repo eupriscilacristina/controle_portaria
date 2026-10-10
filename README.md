@@ -1,111 +1,97 @@
-# Portaria · Controle de Acesso
+# eu-gestão · Controle de Acesso de Portaria
 
-Sistema de controle de entrada e saída de veículos e pessoas, desenvolvido com HTML, CSS e JavaScript puros. Usa Firebase Authentication para acesso e Cloud Firestore para armazenamento.
+Sistema web para controle de acesso de portaria de obra e prestadores: registra quem entra e sai, com veículo, placa, nota fiscal, obra e status. Funciona no celular como app instalável (PWA) e roda em infraestrutura própria.
 
-## Recursos
+**Produção:** https://control.euprojetos.cloud
 
-- Registro de entrada e saída com data e hora automáticas
-- Cadastro de pessoas com CPF, RG ou CNH
-- Tela de pessoas dentro do local
-- Espelho semanal com filtros e exportação CSV
-- Histórico com busca e exportação CSV
-- Cadastro de pessoas e importação de uma base local opcional
-- Persistência offline do Firestore
-- Modo local para demonstração sem Firebase
+## Funcionalidades
 
-## Estrutura
+- Registro de entrada e saída de pessoas e veículos (nome, função, empresa, documento, placa, nota fiscal, obra e status)
+- Cadastro de pessoas e histórico de acessos
+- Configuração por obra (ObraConfig) e checklist
+- Login por usuário ou por e-mail
+- Troca obrigatória de senha no primeiro acesso
+- Gestão de usuários (criar porteiros, ativar/desativar, redefinir senha) restrita a contas de suporte
+- Contato de suporte via WhatsApp
+- PWA instalável (Android e iPhone), com aviso de "Sem conexão"
 
-```text
-Controle_Portaria/
-├── index.html
-├── css/styles.css
-├── js/firebase-config.js
-├── js/app.js
-├── js/base-planilha.js
-├── firestore.rules
-├── firebase.json
-└── README.md
+## Perfis e permissões
+
+| Perfil | O que faz |
+|---|---|
+| **ADMIN** | Acesso completo às telas de operação (acessos, pessoas, histórico) |
+| **PORTEIRO** | Registra entradas e saídas |
+| **Suporte** | Conta ADMIN autorizada por configuração a gerir usuários |
+
+A gestão de usuários não depende só do papel. A API exige que o usuário esteja na lista `SUPORTE_USERNAMES` (variável de ambiente) e consulta o banco a cada requisição. Se a lista estiver vazia, ninguém gerencia usuários (falha fechada). O papel SINDICO existe no modelo, reservado para uma versão futura (ADMIN cria SINDICO, SINDICO cria PORTEIRO).
+
+## Arquitetura
+
+```
+Celular / navegador (PWA)
+        │ HTTPS
+        ▼
+   nginx (container web)  ──►  arquivos estáticos (HTML/CSS/JS)
+        │
+        ▼  /api
+   API Node.js + Express (container api)
+        │
+        ▼
+   PostgreSQL 16 (container postgres)
 ```
 
-`js/base-planilha.js` é opcional e fica fora do Git e do Firebase Hosting. A planilha original também é ignorada para impedir a publicação de dados pessoais.
+- **Frontend:** HTML, CSS e JavaScript puro, sem framework. Uma camada de abstração (`watch`, `docAdd`, `docUpdate`, `docDelete`) isola o acesso à API.
+- **Backend:** API REST em Node.js + Express, com Prisma 7 e validação de entrada com zod.
+- **Banco:** PostgreSQL, com tabelas `tenants`, `users`, `pessoas`, `acessos`, `autorizacoes`, `obra_configs` e `checklist_itens`.
+- **Infraestrutura:** VPS na Hostinger, com Docker Compose (serviços `api`, `postgres` e `web`).
+- **Multi-tenant:** os dados são separados por `tenantId`, e as consultas sempre filtram por ele.
+- **Histórico:** o projeto foi migrado do Firebase para backend próprio.
 
-## Configurar o Firebase
+## Segurança
 
-### 1. Criar o projeto
+- **Autenticação com JWT**, com o papel e o tenant no token.
+- **Senhas com hash bcrypt**; o hash nunca é retornado pela API nem aparece em logs.
+- **Rate limit no login e na troca de senha:** 5 tentativas por 15 minutos.
+- **Mensagem de erro genérica** no login ("Credenciais inválidas"), sem revelar se o usuário existe.
+- **Troca obrigatória de senha:** enquanto pendente, o token só acessa a rota de troca; as demais retornam 403.
+- **Usuário desativado não entra**, e o histórico de acessos é preservado.
+- **Autorização no servidor:** esconder uma tela no frontend é só visual; quem barra é a API (403).
+- **PWA seguro:** o service worker nunca faz cache de `/api` nem de requisições com `Authorization`.
+- **Segredos fora do código:** configuração por variáveis de ambiente, com `.env.example` sem valores reais.
 
-1. Abra o [console.firebase.google.com](https://console.firebase.google.com/).
-2. Crie um projeto e escolha uma região.
-3. O identificador do projeto pode ser definido em `.firebaserc`.
+## PWA
 
-### 2. Criar o Firestore
+- Manifest com ícones 192/512 (any e maskable)
+- Service worker com cache versionado e estratégia rede-primeiro para HTML, JS e CSS
+- Atualizações chegam sem prender o usuário em uma versão antiga
 
-1. Em **Build → Firestore Database**, crie o banco.
-2. Escolha **Iniciar em modo de produção**.
-3. Selecione a região mais próxima dos usuários.
+Para instalar: no Android, menu do Chrome → "Instalar app"; no iPhone, Safari → Compartilhar → "Adicionar à Tela de Início".
 
-### 3. Ativar a autenticação
+## Operação e deploy
 
-1. Abra **Authentication → Sign-in method**.
-2. Ative **E-mail/Password**.
-3. Em **Users**, cadastre os operadores que poderão acessar o sistema.
+- Código no GitHub: repositórios `controle_portaria` (frontend, branch `migracao-vps`) e `eu-gestao-api` (backend, branch `main`).
+- Deploy do frontend: script que baixa a branch e atualiza o container `web`.
+- Deploy do backend: `git pull`, rebuild da imagem da API, migrations com `prisma migrate deploy` e recriação só do container `api`.
+- Backups do PostgreSQL com `pg_dump` compactado, e novo backup antes de qualquer migration.
+- Nunca usar `docker compose down -v` em produção.
 
-O código de acesso do aplicativo não deve ser mantido no JavaScript. A validação é feita pelo Firebase Authentication.
+## Variáveis de ambiente (backend)
 
-### 4. Publicar as regras protegidas
+Veja o `.env.example` da API. Entre elas:
 
-O arquivo `firestore.rules` permite leitura e escrita somente para uma sessão autenticada:
+- `SUPORTE_USERNAMES`: usernames (separados por vírgula) autorizados a gerir usuários.
+- Segredo do JWT e dados de conexão com o banco (nunca versionar valores reais).
 
-```bash
-firebase login
-firebase deploy --only firestore:rules
-```
+## Roadmap
 
-Todos os usuários cadastrados no Authentication devem ser considerados confiáveis. Para permissões diferentes por função, use Firebase custom claims e valide essas permissões também nas regras do Firestore.
+- Rotas de QR para autorização de acesso (tabela `autorizacoes` já criada)
+- Papel SUPORTE próprio no modelo, no lugar da lista por variável de ambiente
+- Perfil SINDICO, com criação de PORTEIRO por tenant
 
-### 5. Configurar o aplicativo Web
+## Tecnologias
 
-1. Em **Project settings**, crie um aplicativo Web.
-2. Copie o objeto de configuração para `js/firebase-config.js`.
-3. Mantenha o arquivo com o formato `firebaseConfig` esperado pela aplicação.
+HTML · CSS · JavaScript · Node.js · Express · Prisma · PostgreSQL · JWT · bcrypt · zod · Docker · Docker Compose · nginx · PWA
 
-A configuração de um aplicativo Web do Firebase é enviada ao navegador e não deve ser tratada como credencial administrativa. A proteção dos dados depende do Authentication e das regras do Firestore.
+## Autoria
 
-### 6. Executar localmente
-
-Use um servidor HTTP local:
-
-```bash
-npx serve .
-```
-
-Se o Firebase não estiver configurado, a tela oferece o modo local. Nesse modo, os registros ficam no `localStorage` do navegador e não são enviados ao Firestore.
-
-### 7. Publicar o site
-
-```bash
-firebase login
-firebase deploy --only firestore:rules,hosting
-```
-
-O comando publica as regras protegidas e o site no Firebase Hosting.
-
-## Base local opcional
-
-Para importar pessoas, crie `js/base-planilha.js` com o formato abaixo:
-
-```js
-var BASE_PLANILHA = [
-  { nome: "Nome Exemplo", funcao: "Função", empresa: "Empresa" }
-];
-
-var BASE_OBRAS = ["Obra A", "Obra B"];
-```
-
-O arquivo é ignorado pelo Git e pelo Firebase Hosting. O botão de importação só aparece quando a base existe, o Firebase está autenticado e a aplicação está usando a nuvem.
-
-## Dados e privacidade
-
-- Nenhuma planilha ou lista de trabalhadores é distribuída pelo repositório.
-- A base local e os arquivos `*.xlsx` permanecem apenas na máquina de desenvolvimento.
-- O modo local não oferece proteção para dados reais, pois usa o armazenamento do navegador.
-- Antes de usar em produção, revise as regras, cree usuários individuais e faça backup dos dados necessários.
+Projeto desenvolvido por Priscila, com apoio de IA na codificação e na revisão de segurança.
