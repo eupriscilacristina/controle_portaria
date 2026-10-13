@@ -1,0 +1,223 @@
+/* Módulo Visitas (cadastros). Complementa o styles.css sem alterá-lo. */
+
+/* Classes como .form-grid definem display e anulariam [hidden]. */
+.vis-root [hidden] {
+  display: none !important;
+}
+
+.vis-status {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  background: #fdecea;
+  color: #b42318;
+  border: 1px solid rgba(180, 35, 24, 0.25);
+}
+
+.vis-status.ok {
+  background: #f1f7e4;
+  color: #3f6212;
+  border-color: rgba(110, 131, 24, 0.3);
+}
+
+.vis-subnav {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.vis-subnav::-webkit-scrollbar {
+  display: none;
+}
+
+.vis-subnav button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #3a3d42;
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.vis-subnav button[hidden] {
+  display: none !important;
+}
+
+.vis-hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.vis-vazio {
+  padding: 12px 0;
+}
+
+.vis-paginacao {
+  margin-top: 14px;
+}
+
+.vis-paginacao .btn {
+  flex: 1 1 0;
+}
+
+/* Leitor de QR */
+.vis-leitor {
+  margin: 0 0 12px;
+}
+
+.vis-leitor video {
+  width: 100%;
+  max-height: 60vh;
+  border-radius: 14px;
+  background: #111214;
+  object-fit: cover;
+}
+
+.vis-leitor canvas {
+  display: none;
+}
+
+/* Resultado de leitura e QR gerado */
+.vis-resultado {
+  margin-top: 14px;
+  text-align: center;
+}
+
+.vis-resultado h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.vis-resultado.ok {
+  border: 2px solid rgba(110, 131, 24, 0.5);
+  background: #f1f7e4;
+}
+
+.vis-resultado.erro {
+  border: 2px solid rgba(180, 35, 24, 0.45);
+  background: #fdecea;
+}
+
+.vis-resultado .vis-actions {
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.vis-qr-card {
+  margin-top: 14px;
+  text-align: center;
+}
+
+.vis-qr-img {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  margin: 8px auto 4px;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.vis-url {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* QR fixo: visível na tela e na impressão */
+.vis-qrfixo {
+  margin-top: 16px;
+  text-align: center;
+  padding: 20px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+}
+
+.vis-qrfixo img {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #visQrFixoArea,
+  #visQrFixoArea * {
+    visibility: visible !important;
+  }
+
+  #visQrFixoArea {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none;
+  }
+}
+
+.vis-subnav button.active {
+  background: var(--grad);
+  color: #fff;
+  border-color: transparent;
+}
+
+.vis-aviso {
+  margin: 0;
+  font-size: 14px;
+  color: #b42318;
+}
+
+.vis-aviso.ok {
+  color: #3f6212;
+}
+
+.vis-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  min-height: 36px;
+}
+
+.vis-check input {
+  width: 18px;
+  height: 18px;
+}
+
+.vis-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.vis-actions .btn {
+  flex: 1 1 140px;
+}
+
+.vis-root .item-actions .btn {
+  min-height: 40px;
+}
+
+/* Celular: botões com área de toque maior e sem zoom no foco do campo. */
+@media (max-width: 600px) {
+  .vis-root input,
+  .vis-root select {
+    font-size: 16px;
+  }
+}

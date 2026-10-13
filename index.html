@@ -11,6 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css?v=70">
+  <link rel="stylesheet" href="css/visitas.css?v=1">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#f97316">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -548,6 +549,276 @@
       </div>
       <div class="list" id="listaUsuarios"></div>
     </section>
+
+    <section class="tab vis-root" id="tab-visitas">
+      <div class="vis-status" id="visStatus" role="status" hidden></div>
+      <nav class="vis-subnav" aria-label="Visitas">
+        <button type="button" class="active" data-vis-sub="visitas">Nova visita</button>
+        <button type="button" data-vis-sub="leitor">Leitor</button>
+        <button type="button" data-vis-sub="historico">Histórico</button>
+        <button type="button" data-vis-sub="pendencias">Pendências</button>
+        <button type="button" data-vis-sub="apartamentos">Apartamentos</button>
+        <button type="button" data-vis-sub="moradores">Moradores</button>
+        <button type="button" data-vis-sub="visitantes">Visitantes</button>
+        <button type="button" data-vis-sub="qrfixo" hidden>QR fixo</button>
+      </nav>
+
+      <div class="vis-painel" id="visPainelVisitas">
+        <div class="card">
+          <div class="card-head">
+            <h2>Nova visita</h2>
+            <p>Escolha quem autorizou e quem chega. Ao salvar, o QR é gerado.</p>
+          </div>
+          <form id="visVtForm" class="form-grid" autocomplete="off">
+            <div class="field full">
+              <label for="visVtApto">Apartamento *</label>
+              <select id="visVtApto" required></select>
+            </div>
+            <div class="field full">
+              <label for="visVtMorador">Quem autorizou (morador) *</label>
+              <select id="visVtMorador" required></select>
+            </div>
+            <div class="field full">
+              <label for="visVtVisitante">Visitante</label>
+              <select id="visVtVisitante"><option value="">Novo visitante…</option></select>
+            </div>
+            <div class="field full" data-novo-visitante>
+              <label for="visVtNome">Nome do visitante *</label>
+              <input id="visVtNome" maxlength="120" placeholder="Ex.: Ana Lima">
+            </div>
+            <div class="field full" data-novo-visitante>
+              <label for="visVtDoc">Documento</label>
+              <input id="visVtDoc" maxlength="30" placeholder="RG ou CPF (opcional)">
+            </div>
+            <div class="field">
+              <label for="visVtData">Data *</label>
+              <input id="visVtData" type="date" required>
+            </div>
+            <div class="field">
+              <label for="visVtIni">Das *</label>
+              <input id="visVtIni" type="time" required>
+            </div>
+            <div class="field">
+              <label for="visVtFim">Até *</label>
+              <input id="visVtFim" type="time" required>
+            </div>
+            <div class="field full">
+              <label for="visVtObs">Observação</label>
+              <input id="visVtObs" maxlength="300">
+            </div>
+            <div class="field full vis-actions">
+              <button type="submit" class="btn primary lg">Autorizar visita e gerar QR</button>
+            </div>
+            <div class="field full"><p class="vis-aviso" id="visVtAviso" hidden></p></div>
+          </form>
+        </div>
+        <div id="visVtResultado" hidden></div>
+      </div>
+
+      <div class="vis-painel" id="visPainelLeitor" hidden>
+        <div class="card">
+          <div class="card-head">
+            <h2>Leitor de QR</h2>
+            <p>Aponte a câmera para o QR da visita. Sem câmera, cole o código abaixo.</p>
+          </div>
+          <div class="vis-leitor">
+            <video id="visLeitorVideo" playsinline muted hidden></video>
+            <canvas id="visLeitorCanvas" hidden></canvas>
+            <p class="vis-hint" id="visLeitorEstado">Câmera desligada.</p>
+          </div>
+          <div class="vis-actions">
+            <button type="button" class="btn primary lg" id="visLeitorLigar">Ligar câmera</button>
+            <button type="button" class="btn ghost lg" id="visLeitorDesligar" hidden>Desligar câmera</button>
+          </div>
+          <form id="visLeitorManual" class="form-grid" autocomplete="off">
+            <div class="field full">
+              <label for="visLeitorTexto">Código do QR (digitação manual)</label>
+              <textarea id="visLeitorTexto" rows="3"></textarea>
+            </div>
+            <div class="field full vis-actions">
+              <button type="submit" class="btn ghost lg">Validar código</button>
+            </div>
+          </form>
+          <div id="visLeitorResultado" hidden></div>
+        </div>
+        <div class="section-head"><div><h2>Dentro agora</h2><p id="visDentroContagem">0 pessoas</p></div></div>
+        <div class="list" id="visListaDentro"></div>
+      </div>
+
+      <div class="vis-painel" id="visPainelHistorico" hidden>
+        <div class="card">
+          <div class="card-head">
+            <h2>Histórico</h2>
+            <p>Filtre por status, apartamento, período ou nome do visitante.</p>
+          </div>
+          <form id="visHistFiltros" class="form-grid" autocomplete="off">
+            <div class="field">
+              <label for="visHistStatus">Status</label>
+              <select id="visHistStatus">
+                <option value="">Todos</option>
+                <option value="PENDENTE">Pendente</option>
+                <option value="AUTORIZADA">Autorizada</option>
+                <option value="VENCIDA">Vencida</option>
+                <option value="EM_VISITA">Em visita</option>
+                <option value="FINALIZADA">Finalizada</option>
+                <option value="CANCELADA">Cancelada</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="visHistApto">Apartamento</label>
+              <select id="visHistApto"><option value="">Todos</option></select>
+            </div>
+            <div class="field">
+              <label for="visHistDe">De</label>
+              <input id="visHistDe" type="date">
+            </div>
+            <div class="field">
+              <label for="visHistAte">Até</label>
+              <input id="visHistAte" type="date">
+            </div>
+            <div class="field full">
+              <label for="visHistNome">Visitante</label>
+              <input id="visHistNome" type="search" placeholder="Nome do visitante">
+            </div>
+            <div class="field full vis-actions">
+              <button type="submit" class="btn primary lg">Filtrar</button>
+            </div>
+          </form>
+        </div>
+        <div id="visHistResultado" hidden></div>
+        <p class="vis-hint" id="visHistTotal"></p>
+        <div class="list" id="visListaHistorico"></div>
+        <div class="vis-actions vis-paginacao">
+          <button type="button" class="btn ghost" id="visHistAnt">Anterior</button>
+          <button type="button" class="btn ghost" id="visHistProx">Próxima</button>
+        </div>
+      </div>
+
+      <div class="vis-painel" id="visPainelPendencias" hidden>
+        <div class="card-head">
+          <h2>Pendências</h2>
+          <p>Solicitações feitas pela página pública. Aprove para gerar o QR da visita.</p>
+        </div>
+        <div id="visPendResultado" hidden></div>
+        <div class="list" id="visListaPendencias"></div>
+      </div>
+
+      <div class="vis-painel" id="visPainelQrFixo" hidden>
+        <div class="card">
+          <div class="card-head">
+            <h2>QR fixo da portaria</h2>
+            <p>Imprima e cole na portaria. Quem ler o QR preenche a solicitação com apartamento e PIN.</p>
+          </div>
+          <div class="vis-actions">
+            <button type="button" class="btn primary lg" id="visQrFixoGerar">Gerar QR</button>
+            <button type="button" class="btn ghost lg" id="visQrFixoImprimir" hidden>Imprimir</button>
+          </div>
+        </div>
+        <div id="visQrFixoArea" class="vis-qrfixo" hidden>
+          <h3>Solicite sua visita</h3>
+          <img id="visQrFixoImg" alt="QR code da portaria">
+          <p>Aponte a câmera do celular para este código.</p>
+          <p class="vis-url" id="visQrFixoUrl"></p>
+        </div>
+      </div>
+
+      <div class="vis-painel" id="visPainelApartamentos" hidden>
+        <div class="card" id="visApCard">
+          <div class="card-head">
+            <h2 id="visApTitulo">Novo apartamento</h2>
+            <p>Bloco é opcional. Use o mesmo bloco e número que a portaria usará.</p>
+          </div>
+          <form id="visApForm" class="form-grid" autocomplete="off">
+            <input type="hidden" id="visApId">
+            <div class="field">
+              <label for="visApBloco">Bloco</label>
+              <input id="visApBloco" maxlength="20" placeholder="Ex.: A" autocapitalize="characters">
+            </div>
+            <div class="field">
+              <label for="visApNumero">Número *</label>
+              <input id="visApNumero" maxlength="20" required placeholder="Ex.: 101" inputmode="numeric">
+            </div>
+            <div class="field full" data-so-edicao hidden>
+              <label class="vis-check"><input type="checkbox" id="visApAtivo"> Apartamento ativo</label>
+            </div>
+            <div class="field full vis-actions">
+              <button type="submit" class="btn primary lg" id="visApSalvar">Cadastrar apartamento</button>
+              <button type="button" class="btn ghost lg" id="visApCancelar" hidden>Cancelar edição</button>
+            </div>
+            <div class="field full"><p class="vis-aviso" id="visApAviso" hidden></p></div>
+          </form>
+        </div>
+        <div class="section-head"><div><h2>Apartamentos</h2><p id="visApContagem">0 apartamentos</p></div></div>
+        <div class="list" id="visListaApartamentos"></div>
+      </div>
+
+      <div class="vis-painel" id="visPainelMoradores" hidden>
+        <div class="card" id="visMorCard">
+          <div class="card-head">
+            <h2 id="visMorTitulo">Novo morador</h2>
+            <p>O PIN de 6 dígitos permite ao morador autorizar visitas pela página pública.</p>
+          </div>
+          <form id="visMorForm" class="form-grid" autocomplete="off">
+            <input type="hidden" id="visMorId">
+            <div class="field full">
+              <label for="visMorApto">Apartamento *</label>
+              <select id="visMorApto" required></select>
+            </div>
+            <div class="field full">
+              <label for="visMorNome">Nome completo *</label>
+              <input id="visMorNome" maxlength="120" required placeholder="Ex.: Maria Souza">
+            </div>
+            <div class="field">
+              <label for="visMorPin">PIN (6 dígitos)</label>
+              <input id="visMorPin" maxlength="6" inputmode="numeric" pattern="\d{6}" autocomplete="off"
+                placeholder="Ex.: 123456">
+            </div>
+            <div class="field" data-so-edicao hidden>
+              <label class="vis-check"><input type="checkbox" id="visMorRemoverPin"> Remover PIN</label>
+              <label class="vis-check"><input type="checkbox" id="visMorAtivo"> Morador ativo</label>
+            </div>
+            <div class="field full vis-actions">
+              <button type="submit" class="btn primary lg" id="visMorSalvar">Cadastrar morador</button>
+              <button type="button" class="btn ghost lg" id="visMorCancelar" hidden>Cancelar edição</button>
+            </div>
+            <div class="field full"><p class="vis-aviso" id="visMorAviso" hidden></p></div>
+          </form>
+        </div>
+        <div class="section-head"><div><h2>Moradores</h2><p id="visMorContagem">0 moradores</p></div></div>
+        <div class="list" id="visListaMoradores"></div>
+      </div>
+
+      <div class="vis-painel" id="visPainelVisitantes" hidden>
+        <div class="card" id="visVisCard">
+          <div class="card-head">
+            <h2 id="visVisTitulo">Novo visitante</h2>
+            <p>Cadastre quem visita o condomínio. Documento é opcional.</p>
+          </div>
+          <form id="visVisForm" class="form-grid" autocomplete="off">
+            <input type="hidden" id="visVisId">
+            <div class="field full">
+              <label for="visVisNome">Nome completo *</label>
+              <input id="visVisNome" maxlength="120" required placeholder="Ex.: Ana Lima">
+            </div>
+            <div class="field full">
+              <label for="visVisDoc">Documento</label>
+              <input id="visVisDoc" maxlength="30" placeholder="RG ou CPF (opcional)">
+            </div>
+            <div class="field full vis-actions">
+              <button type="submit" class="btn primary lg" id="visVisSalvar">Cadastrar visitante</button>
+              <button type="button" class="btn ghost lg" id="visVisCancelar" hidden>Cancelar edição</button>
+            </div>
+            <div class="field full"><p class="vis-aviso" id="visVisAviso" hidden></p></div>
+          </form>
+        </div>
+        <div class="section-head"><div><h2>Visitantes</h2><p id="visVisContagem">0 visitantes</p></div></div>
+        <div class="field">
+          <label for="visVisBusca">Buscar por nome</label>
+          <input id="visVisBusca" type="search" placeholder="Digite parte do nome" autocomplete="off">
+        </div>
+        <div class="list" id="visListaVisitantes"></div>
+      </div>
+    </section>
   </main>
 
   <nav class="bottom-nav" aria-label="Navegação principal">
@@ -616,6 +887,15 @@
       </svg>
       <span>Usuários</span>
     </button>
+    <button type="button" class="nav-btn" id="navVisitas" data-tab="visitas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 21h18" />
+        <path d="M5 21V7l7-4 7 4v14" />
+        <path d="M9 9h.01M15 9h.01M9 13h.01M15 13h.01M10 21v-4h4v4" />
+      </svg>
+      <span>Visitas</span>
+    </button>
     <a class="nav-btn nav-suporte js-suporte-whats" href="https://wa.me/5532991664351" target="_blank"
       rel="noopener noreferrer">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -646,6 +926,10 @@
   <script defer src="js/api-config.js?v=2"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
   <script defer src="js/app.js?v=68"></script>
+  <script defer src="js/visitas.js?v=1"></script>
+  <script defer src="js/vendor/qrcode-generator.js"></script>
+  <script defer src="js/vendor/jsqr.js"></script>
+  <script defer src="js/visitas-operacao.js?v=1"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
