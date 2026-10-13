@@ -2892,6 +2892,20 @@ const SUPORTE_WHATSAPP = {
   function aplicarMenuSuporte() {
     var qr = $('#suporteMenuQrFixo');
     if (qr) qr.hidden = !(ehAdmin() || podeGerirUsuarios());
+    atualizarBotaoSuporte();
+  }
+
+  // Botão flutuante aparece só com sessão e fora das telas de login/troca de senha.
+  function atualizarBotaoSuporte() {
+    var btn = $('#navSuporte');
+    if (!btn) return;
+    var telaLogin = $('#loginScreen');
+    var telaTroca = $('#trocaScreen');
+    var bloqueado = (telaLogin && !telaLogin.hidden) || (telaTroca && !telaTroca.hidden);
+    var mostrar = !!state.sessao && !bloqueado;
+    btn.hidden = !mostrar;
+    document.body.classList.toggle('suporte-ativo', mostrar);
+    if (!mostrar) menuSuporteAbrir(false);
   }
 
   function iniciarMenuSuporte() {
@@ -2900,6 +2914,14 @@ const SUPORTE_WHATSAPP = {
     if (!btn || !menu) return;
     var num = $('#suporteMenuNumero');
     if (num) num.textContent = menuSuporteNumeroTexto();
+
+    ['#loginScreen', '#trocaScreen'].forEach(function (sel) {
+      var el = $(sel);
+      if (el && window.MutationObserver) {
+        new MutationObserver(atualizarBotaoSuporte).observe(el, { attributes: true, attributeFilter: ['hidden'] });
+      }
+    });
+    atualizarBotaoSuporte();
 
     btn.addEventListener('click', function (ev) {
       ev.stopPropagation();

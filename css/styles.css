@@ -2791,25 +2791,55 @@ table.espelho {
   flex-shrink: 0;
 }
 
-.nav-suporte {
-  text-decoration: none;
-  color: var(--muted);
-  min-height: 44px;
-}
-
-.nav-suporte:hover {
-  color: var(--text);
-}
-
-.nav-suporte:focus-visible,
 .suporte-wa-login:focus-visible {
   outline: 2px solid var(--orange);
   outline-offset: 2px;
 }
 
-@media (max-width: 600px) {
-  .nav-suporte {
-    min-height: 56px;
+/* Botão flutuante de Suporte: canto inferior direito, acima da barra inferior */
+.suporte-fab {
+  position: fixed;
+  right: calc(14px + env(safe-area-inset-right));
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 55;
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--grad-preto);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(17, 18, 20, 0.35), 0 0 14px rgba(246, 107, 25, 0.3);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.suporte-fab[hidden] {
+  display: none;
+}
+
+.suporte-fab svg {
+  width: 24px;
+  height: 24px;
+}
+
+.suporte-fab:active {
+  transform: scale(0.94);
+}
+
+.suporte-fab:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 3px;
+}
+
+@media (min-width: 601px) {
+  .suporte-fab {
+    bottom: calc(96px + env(safe-area-inset-bottom));
   }
 }
 
@@ -2928,6 +2958,12 @@ table.espelho {
 .suporte-menu-item:focus-visible {
   outline: 2px solid var(--orange);
   outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  body.suporte-ativo {
+    padding-bottom: calc(136px + env(safe-area-inset-bottom));
+  }
 }
 
 /* ===== Gestão de usuários ===== */
