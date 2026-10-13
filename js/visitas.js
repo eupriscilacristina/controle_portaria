@@ -30,6 +30,16 @@
     }
   }
 
+  // QR fixo: ADMIN e suporte (podeGerirUsuarios vem do login salvo).
+  function podeQrFixo() {
+    try {
+      var u = JSON.parse(localStorage.getItem('eugestao_user') || 'null');
+      return !!u && (String(u.papel || '').toUpperCase() === 'ADMIN' || u.podeGerirUsuarios === true);
+    } catch (e) {
+      return false;
+    }
+  }
+
   function msgErro(e) {
     if (e && e.status === 401) return 'Sessão expirada. Saia e entre novamente.';
     if (e && e.status === 403) return 'Você não tem permissão para esta ação.';
@@ -56,7 +66,7 @@
     $('#visApCard').hidden = !admin;
     $('#visMorCard').hidden = !admin;
     var qrFixo = document.querySelector('[data-vis-sub="qrfixo"]');
-    if (qrFixo) qrFixo.hidden = !admin;
+    if (qrFixo) qrFixo.hidden = !podeQrFixo();
     document.querySelectorAll('.vis-root [data-so-edicao]').forEach(function (el) {
       el.hidden = true;
     });
@@ -367,7 +377,7 @@
   };
 
   function mostrarSub(nome) {
-    if (nome === 'qrfixo' && !ehAdmin()) nome = 'visitas';
+    if (nome === 'qrfixo' && !podeQrFixo()) nome = 'visitas';
     document.querySelectorAll('[data-vis-sub]').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-vis-sub') === nome);
     });
