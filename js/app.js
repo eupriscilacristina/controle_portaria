@@ -507,7 +507,7 @@ const SUPORTE_WHATSAPP = {
     if (co) co.hidden = !admin;
     if (!admin && (state.tab === 'pessoas' || state.tab === 'historico')) setTab('registrar');
     if (!gerirUsu && state.tab === 'usuarios') setTab('registrar');
-    aplicarMenuSuporte();
+    atualizarBotaoSuporte();
   }
 
   function animarNumero(el, novo) {
@@ -2860,42 +2860,7 @@ const SUPORTE_WHATSAPP = {
       '.csv', linhas);
   }
 
-  // ===== Menu do Suporte (barra inferior) com atalhos de Visitas =====
-  function menuSuporteAbrir(abrir) {
-    var menu = $('#suporteMenu');
-    var btn = $('#navSuporte');
-    if (!menu || !btn) return;
-    if (abrir) {
-      // Ancora o painel logo acima do botão, sem cobrir a barra inferior.
-      var r = btn.getBoundingClientRect();
-      menu.style.bottom = Math.round(window.innerHeight - r.top + 8) + 'px';
-      menu.style.right = Math.max(10, Math.round(window.innerWidth - r.right)) + 'px';
-    }
-    menu.hidden = !abrir;
-    btn.setAttribute('aria-expanded', abrir ? 'true' : 'false');
-  }
-
-  function menuSuporteNumeroTexto() {
-    var n = SUPORTE_WHATSAPP.numero;
-    return '+' + n.slice(0, 2) + ' (' + n.slice(2, 4) + ') ' + n.slice(4, 9) + '-' + n.slice(9);
-  }
-
-  // Abre a aba Visitas e a sub-aba pedida, usando os próprios controles de visitas.js.
-  function abrirVisitaAtalho(sub) {
-    menuSuporteAbrir(false);
-    var navVis = $('#navVisitas');
-    if (navVis) navVis.click();
-    var alvo = document.querySelector('[data-vis-sub="' + sub + '"]');
-    if (alvo && !alvo.hidden) alvo.click();
-  }
-
-  function aplicarMenuSuporte() {
-    var qr = $('#suporteMenuQrFixo');
-    if (qr) qr.hidden = !(ehAdmin() || podeGerirUsuarios());
-    atualizarBotaoSuporte();
-  }
-
-  // Botão flutuante aparece só com sessão e fora das telas de login/troca de senha.
+  // Botao flutuante de Suporte: so aparece com sessao e fora do login/troca de senha.
   function atualizarBotaoSuporte() {
     var btn = $('#navSuporte');
     if (!btn) return;
@@ -2905,16 +2870,9 @@ const SUPORTE_WHATSAPP = {
     var mostrar = !!state.sessao && !bloqueado;
     btn.hidden = !mostrar;
     document.body.classList.toggle('suporte-ativo', mostrar);
-    if (!mostrar) menuSuporteAbrir(false);
   }
 
   function iniciarMenuSuporte() {
-    var btn = $('#navSuporte');
-    var menu = $('#suporteMenu');
-    if (!btn || !menu) return;
-    var num = $('#suporteMenuNumero');
-    if (num) num.textContent = menuSuporteNumeroTexto();
-
     ['#loginScreen', '#trocaScreen'].forEach(function (sel) {
       var el = $(sel);
       if (el && window.MutationObserver) {
@@ -2922,29 +2880,6 @@ const SUPORTE_WHATSAPP = {
       }
     });
     atualizarBotaoSuporte();
-
-    btn.addEventListener('click', function (ev) {
-      ev.stopPropagation();
-      menuSuporteAbrir(menu.hidden);
-    });
-    $$('[data-visita-atalho]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        abrirVisitaAtalho(b.getAttribute('data-visita-atalho'));
-      });
-    });
-    var linkWa = menu.querySelector('.suporte-menu-wa');
-    if (linkWa) linkWa.addEventListener('click', function () { menuSuporteAbrir(false); });
-
-    // Fecha ao tocar fora do painel e do próprio botão.
-    document.addEventListener('pointerdown', function (ev) {
-      if (menu.hidden) return;
-      if (menu.contains(ev.target) || btn.contains(ev.target)) return;
-      menuSuporteAbrir(false);
-    });
-    document.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Escape') menuSuporteAbrir(false);
-    });
-    window.addEventListener('resize', function () { menuSuporteAbrir(false); });
   }
 
   function bind() {

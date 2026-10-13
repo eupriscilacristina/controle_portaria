@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=72">
+  <link rel="stylesheet" href="css/styles.css?v=73">
   <link rel="stylesheet" href="css/visitas.css?v=1">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#f97316">
@@ -898,36 +898,13 @@
     </button>
   </nav>
 
-  <button type="button" class="suporte-fab" id="navSuporte" aria-haspopup="true" aria-expanded="false"
-    aria-controls="suporteMenu" aria-label="Suporte" title="Suporte" hidden>
+  <a class="suporte-fab js-suporte-whats" id="navSuporte" href="https://wa.me/5532991664351" target="_blank"
+    rel="noopener noreferrer" aria-label="Suporte WhatsApp" title="Suporte WhatsApp" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
       stroke-linejoin="round" aria-hidden="true">
       <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
     </svg>
-  </button>
-
-  <div class="suporte-menu" id="suporteMenu" role="menu" hidden>
-    <a class="suporte-menu-wa js-suporte-whats" href="https://wa.me/5532991664351" target="_blank"
-      rel="noopener noreferrer" role="menuitem">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-        stroke-linejoin="round" aria-hidden="true">
-        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-      </svg>
-      <span>
-        <strong>Suporte WhatsApp</strong>
-        <small id="suporteMenuNumero"></small>
-      </span>
-    </a>
-    <p class="suporte-menu-titulo">Visitas</p>
-    <div class="suporte-menu-atalhos">
-      <button type="button" class="suporte-menu-item" role="menuitem" data-visita-atalho="visitas">Nova visita</button>
-      <button type="button" class="suporte-menu-item" role="menuitem" data-visita-atalho="leitor">Ler QR</button>
-      <button type="button" class="suporte-menu-item" role="menuitem" data-visita-atalho="historico">Hist&oacute;rico</button>
-      <button type="button" class="suporte-menu-item" role="menuitem" data-visita-atalho="pendencias">Pend&ecirc;ncias</button>
-      <button type="button" class="suporte-menu-item" role="menuitem" data-visita-atalho="qrfixo" id="suporteMenuQrFixo"
-        hidden>QR fixo</button>
-    </div>
-  </div>
+  </a>
 
   <div class="foto-modal" id="fotoModal" hidden>
     <div class="foto-modal-fundo" id="fotoModalFundo"></div>
@@ -948,7 +925,7 @@
   <script defer src="js/firebase-config.js?v=4"></script>
   <script defer src="js/api-config.js?v=2"></script>
   <script defer src="js/base-planilha.js?v=4"></script>
-  <script defer src="js/app.js?v=70"></script>
+  <script defer src="js/app.js?v=71"></script>
   <script defer src="js/visitas.js?v=2"></script>
   <script defer src="js/vendor/qrcode-generator.js"></script>
   <script defer src="js/vendor/jsqr.js"></script>
