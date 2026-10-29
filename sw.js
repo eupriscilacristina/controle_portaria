@@ -3,9 +3,10 @@
 // Chamadas a /api (login, token, usuários, acessos) e requisições com
 // Authorization nunca são interceptadas nem guardadas em cache.
 
-var CACHE_NAME = 'eugestao-v3';
+var CACHE_NAME = 'eugestao-v4';
 
 var PRECACHE = [
+  '/',
   '/index.html',
   '/css/styles.css',
   '/css/visitas.css',
@@ -31,13 +32,28 @@ function cacheavel(response) {
   return response && response.ok && response.status === 200 && response.type !== 'opaque';
 }
 
+// Resposta vinda de redirect não serve para navegação offline:
+// recria a resposta sem a marca de redirecionamento.
+function semRedirect(response) {
+  if (!response.redirected) { return Promise.resolve(response); }
+  return response.blob().then(function (blob) {
+    return new Response(blob, { status: 200, statusText: 'OK', headers: response.headers });
+  });
+}
+
+function guardar(cache, request, response) {
+  return semRedirect(response).then(function (limpa) { return cache.put(request, limpa); });
+}
+
 self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(function (cache) {
         // Arquivo por arquivo: um item ausente não impede a instalação.
         return Promise.all(PRECACHE.map(function (url) {
-          return cache.add(url).catch(function () { });
+          return fetch(url, { cache: 'reload' }).then(function (response) {
+            return cacheavel(response) ? guardar(cache, url, response) : null;
+          }).catch(function () { });
         }));
       })
       .then(function () { return self.skipWaiting(); })
@@ -83,7 +99,7 @@ self.addEventListener('fetch', function (event) {
         return cached || fetch(request).then(function (response) {
           if (cacheavel(response)) {
             var copy = response.clone();
-            caches.open(CACHE_NAME).then(function (cache) { cache.put(request, copy); });
+            caches.open(CACHE_NAME).then(function (cache) { guardar(cache, request, copy); });
           }
           return response;
         });
@@ -99,14 +115,19 @@ self.addEventListener('fetch', function (event) {
         .then(function (response) {
           if (cacheavel(response)) {
             var copy = response.clone();
-            caches.open(CACHE_NAME).then(function (cache) { cache.put(request, copy); });
+            caches.open(CACHE_NAME).then(function (cache) { guardar(cache, request, copy); });
           }
           return response;
         })
         .catch(function () {
           return caches.match(request, { ignoreSearch: true }).then(function (cached) {
             if (cached) { return cached; }
-            if (request.mode === 'navigate') { return caches.match('/index.html'); }
+            if (request.mode === 'navigate') {
+              // Abertura pelo ícone (start_url "/") ou qualquer rota: entrega o app shell.
+              return caches.match('/index.html').then(function (shell) {
+                return shell || caches.match('/') || Response.error();
+              });
+            }
             return Response.error();
           });
         })

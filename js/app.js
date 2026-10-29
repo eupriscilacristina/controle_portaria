@@ -398,7 +398,7 @@ const SUPORTE_WHATSAPP = {
     function poll() {
       if (cancelado) return;
       clearTimeout(timer);
-      apiGet(apiPath(coll)).then(function (r) {
+      apiFetch(apiPath(coll), { timeoutMs: 15000 }).then(function (r) {
         if (cancelado) return;
         avisou = false;
         setConectado(true);
@@ -3359,29 +3359,41 @@ const SUPORTE_WHATSAPP = {
       mostrarTroca();
       return Promise.resolve(false);
     }
+    // Contato com a API há menos de 24 h: abre direto, sem chamar a API
+    // (funciona em modo avião). A sessão é validada em segundo plano.
+    if (!Offline.limiteExcedido()) {
+      state.sessao = sessaoDe(salvo);
+      if (navigator.onLine === false) setConectado(false);
+      abrirApp();
+      validarSessaoEmSegundoPlano();
+      return Promise.resolve(true);
+    }
+    // Sem contato recente (ou sessão anterior ao modo offline): só a API confirma.
     return apiGet('/pessoas').then(function () {
       state.sessao = sessaoDe(salvo);
       abrirApp();
       return true;
     }).catch(function (e) {
-      if (ehErroDeRede(e)) {
-        // Sem internet ao abrir o app: segue offline por até 24 h desde o último contato.
-        if (Offline.limiteExcedido()) {
-          clearToken();
-          setUserSalvo(null);
-          $('#loginErro').textContent = 'Limite de 24 h offline atingido. Conecte-se para entrar.';
-          return false;
-        }
-        setConectado(false);
-        state.sessao = sessaoDe(salvo);
-        abrirApp();
-        return true;
-      }
-      console.warn('Token salvo inválido, exigindo novo login:', e);
       clearToken();
       setUserSalvo(null);
       Offline.limparDados(); // a fila é mantida para sincronizar após novo login
+      if (ehErroDeRede(e)) {
+        $('#loginErro').textContent = 'Mais de 24 h sem conexão. Conecte-se para entrar.';
+      } else {
+        console.warn('Token salvo inválido, exigindo novo login:', e);
+      }
       return false;
+    });
+  }
+
+  // Online: confirma o token com a API. 401/403 pede novo login (a fila fica);
+  // erro de rede nunca derruba a sessão.
+  function validarSessaoEmSegundoPlano() {
+    if (navigator.onLine === false) return;
+    apiFetch('/pessoas', { timeoutMs: 15000 }).catch(function (e) {
+      if (e && (e.status === 401 || e.status === 403)) {
+        sessaoExpiradaComFila('Sessão expirada. Entre novamente para sincronizar os registros pendentes.');
+      }
     });
   }
 
