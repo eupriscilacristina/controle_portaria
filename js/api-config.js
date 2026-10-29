@@ -52,6 +52,7 @@ async function apiLogin(login, senha) {
     var corpo = await corpoDaResposta(res);
     if (!res.ok) throw erroDeResposta(res, corpo);
     setToken(corpo.token);
+    if (window.Offline) window.Offline.marcarOnline();
     return corpo;
 }
 
@@ -71,11 +72,35 @@ async function apiFetch(path, options) {
         { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
         options.headers || {}
     );
-    var res = await fetch(API_BASE + path, options);
+    var timeoutMs = options.timeoutMs;
+    delete options.timeoutMs;
+    var timer = null;
+    if (timeoutMs && typeof AbortController !== 'undefined') {
+        var ctrl = new AbortController();
+        options.signal = ctrl.signal;
+        timer = setTimeout(function () { ctrl.abort(); }, timeoutMs);
+    }
+    var res;
+    try {
+        res = await fetch(API_BASE + path, options);
+    } catch (err) {
+        // Sem rede, DNS, timeout: sem status HTTP.
+        var e = new Error('Sem conexão com a API');
+        e.rede = true;
+        throw e;
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+    if (window.Offline && res.status < 500) window.Offline.marcarOnline();
     if (res.status === 204) return null;
     var corpo = await corpoDaResposta(res);
     if (!res.ok) throw erroDeResposta(res, corpo);
     return corpo;
+}
+
+// Falha de transporte (offline, timeout, proxy fora do ar): vale enfileirar.
+function ehErroDeRede(e) {
+    return !!e && (e.rede === true || e.status === 502 || e.status === 503 || e.status === 504);
 }
 
 function apiGet(path) {

@@ -3,13 +3,20 @@
 // Chamadas a /api (login, token, usuários, acessos) e requisições com
 // Authorization nunca são interceptadas nem guardadas em cache.
 
-var CACHE_NAME = 'eugestao-v2';
+var CACHE_NAME = 'eugestao-v3';
 
 var PRECACHE = [
   '/index.html',
   '/css/styles.css',
+  '/css/visitas.css',
   '/js/app.js',
   '/js/api-config.js',
+  '/js/offline.js',
+  '/js/base-planilha.js',
+  '/js/visitas.js',
+  '/js/visitas-operacao.js',
+  '/js/vendor/qrcode-generator.js',
+  '/js/vendor/jsqr.js',
   '/js/firebase-config.js',
   '/manifest.webmanifest',
   '/TEKNER_marca.png',

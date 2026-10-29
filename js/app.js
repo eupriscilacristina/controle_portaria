@@ -389,14 +389,36 @@ const SUPORTE_WHATSAPP = {
       timer = setTimeout(poll, POLLING_MS);
     }
 
+    function entregar(lista) {
+      if (coll === 'pessoas') pessoasConhecidas = lista;
+      if (coll === 'acessos') acessosBrutos = lista;
+      cb(coll === 'acessos' ? mesclarPendentes(lista) : lista);
+    }
+
     function poll() {
       if (cancelado) return;
+      clearTimeout(timer);
       apiGet(apiPath(coll)).then(function (r) {
         if (cancelado) return;
         avisou = false;
-        cb(listaDaResposta(r));
+        setConectado(true);
+        var lista = listaDaResposta(r);
+        Offline.salvarCache(coll, lista);
+        entregar(lista);
       }).catch(function (err) {
         if (cancelado) return;
+        if (ehErroDeRede(err)) {
+          // Sem internet: mostra a última lista guardada (sem CPF).
+          setConectado(false);
+          return Offline.lerCache(coll).then(function (cache) {
+            if (cancelado) return;
+            if (cache) entregar(cache);
+          });
+        }
+        if (err && err.status === 401) {
+          sessaoExpiradaComFila();
+          return;
+        }
         console.error(err);
         if (!avisou) {
           avisou = true;
@@ -405,13 +427,101 @@ const SUPORTE_WHATSAPP = {
       }).then(agendar);
     }
 
+    pollers.push(poll);
     poll();
 
     return function () {
       cancelado = true;
       clearTimeout(timer);
       timer = null;
+      var i = pollers.indexOf(poll);
+      if (i >= 0) pollers.splice(i, 1);
     };
+  }
+
+  // ===== Offline: fila de entrada/saída, indicador e sessão =====
+  var pollers = [];
+  var pessoasConhecidas = [];
+  var acessosBrutos = [];
+  var filaPendente = [];
+  var conectado = navigator.onLine !== false;
+  var resumoFila = { pendentes: 0, rejeitados: 0, erros: [] };
+
+  function recarregarDados() {
+    pollers.slice().forEach(function (p) { p(); });
+  }
+
+  function setConectado(v) {
+    if (conectado === v) return;
+    conectado = v;
+    renderStatus();
+  }
+
+  // Une os registros ainda não sincronizados à lista vinda da API/cache, para
+  // a tela refletir a entrada/saída feita offline. Nome/função vêm da lista de
+  // pessoas; a fila guarda apenas o id.
+  function mesclarPendentes(lista) {
+    var out = lista.slice();
+    filaPendente.forEach(function (it) {
+      if (it.rejeitado) return;
+      if (it.op === 'add') {
+        if (out.some(function (a) { return a.id === it.id; })) return;
+        var p = pessoasConhecidas.find(function (x) { return x.id === it.body.pessoaId; }) || {};
+        out.push({
+          id: it.id, tipo: 'pessoa', pessoaId: it.body.pessoaId, nome: p.nome || 'Pessoa cadastrada',
+          funcao: p.funcao || null, empresa: p.empresa || null, tipoDoc: p.tipoDoc || null,
+          atividade: it.body.atividade || null, status: 'dentro', dataEntrada: it.body.dataEntrada,
+          dataSaida: null, pendente: true
+        });
+      } else {
+        var i = out.findIndex(function (a) { return a.id === it.id; });
+        if (i >= 0) out[i] = Object.assign({}, out[i], it.body, { pendente: true });
+      }
+    });
+    return out;
+  }
+
+  function atualizarFila() {
+    return Offline.resumo().then(function (r) {
+      filaPendente = r.itens;
+      resumoFila = r;
+      renderStatus();
+      if (state.sessao) {
+        // Reaplica a fila sobre as listas já carregadas.
+        state.acessos = ordenarAcessos(mesclarPendentes(acessosBrutos));
+        renderAll();
+      }
+    });
+  }
+
+  function limiteOfflineAtingido() {
+    return !conectado && Offline.limiteExcedido();
+  }
+
+  // 24 h sem falar com o servidor: encerra a sessão mantendo a fila.
+  function verificarLimiteOffline() {
+    if (!state.sessao || !limiteOfflineAtingido()) return;
+    sessaoExpiradaComFila('Limite de 24 h offline atingido. Conecte-se e entre novamente.');
+  }
+
+  // Sessão (JWT) vencida ou limite offline: volta ao login SEM apagar a fila.
+  function sessaoExpiradaComFila(msg) {
+    if (!state.sessao) return;
+    Offline.limparDados();
+    sessaoEncerrada(msg || 'Sessão expirada. Entre novamente para sincronizar os registros pendentes.');
+  }
+
+  function offlineErroEnfileirar(e) {
+    return ehErroDeRede(e) || (navigator.onLine === false);
+  }
+
+  // Só entrada/saída de pessoa cadastrada entra na fila.
+  function enfileirarAcesso(op, id, body, userId) {
+    if (Offline.limiteExcedido()) {
+      sessaoExpiradaComFila('Limite de 24 h offline atingido. Conecte-se e entre novamente.');
+      return Promise.reject(new Error('limite offline'));
+    }
+    return Offline.enfileirar({ op: op, id: id, body: body, userId: userId || null }).then(atualizarFila);
   }
 
   function docAdd(coll, data) {
@@ -424,8 +534,26 @@ const SUPORTE_WHATSAPP = {
       notify(coll);
       return Promise.resolve(id);
     }
-    return apiPost(apiPath(coll), data).then(function (r) {
-      return (r && r.id) ? r.id : null;
+    if (coll !== 'acessos') {
+      return apiPost(apiPath(coll), data).then(function (r) {
+        return (r && r.id) ? r.id : null;
+      });
+    }
+    // Acesso: o UUID nasce aqui, então reenviar nunca duplica (a API é idempotente).
+    var novoId = Offline.uuid();
+    var payload = Object.assign({ id: novoId }, data);
+    return apiFetch('/acessos', { method: 'POST', body: JSON.stringify(payload), timeoutMs: 12000 }).then(function (r) {
+      return (r && r.id) ? r.id : novoId;
+    }).catch(function (e) {
+      // Só entrada de pessoa cadastrada pode ficar na fila (sem CPF/nome).
+      if (!offlineErroEnfileirar(e) || !data.pessoaId) throw e;
+      var minimo = {
+        pessoaId: data.pessoaId, tipo: 'pessoa', atividade: data.atividade || null,
+        dataEntrada: data.dataEntrada
+      };
+      return enfileirarAcesso('add', novoId, minimo, state.sessao && state.sessao.id).then(function () {
+        return novoId;
+      });
     });
   }
 
@@ -437,7 +565,12 @@ const SUPORTE_WHATSAPP = {
       notify(coll);
       return Promise.resolve();
     }
-    return apiPut(apiPath(coll) + '/' + id, data);
+    if (coll !== 'acessos') return apiPut(apiPath(coll) + '/' + id, data);
+    var ehSaida = data.status === 'fora' && Object.keys(data).every(function (k) { return k === 'status' || k === 'dataSaida'; });
+    return apiFetch(apiPath(coll) + '/' + id, { method: 'PUT', body: JSON.stringify(data), timeoutMs: 12000 }).catch(function (e) {
+      if (!ehSaida || !offlineErroEnfileirar(e)) throw e;
+      return enfileirarAcesso('update', id, { status: 'fora', dataSaida: data.dataSaida }, state.sessao && state.sessao.id);
+    });
   }
 
   function docDelete(coll, id) {
@@ -452,8 +585,15 @@ const SUPORTE_WHATSAPP = {
   function renderStatus() {
     var el = $('#statusConexao');
     if (useCloud) {
-      el.className = 'conn';
-      el.innerHTML = '<span class="dot"></span> API';
+      var extra = '';
+      if (resumoFila.pendentes > 0) {
+        extra = ' · ' + resumoFila.pendentes + (resumoFila.pendentes === 1 ? ' pendente' : ' pendentes');
+      }
+      if (resumoFila.rejeitados > 0) {
+        extra += ' · ' + resumoFila.rejeitados + ' com erro';
+      }
+      el.className = conectado ? 'conn' : 'conn off';
+      el.innerHTML = '<span class="dot"></span> ' + (conectado ? 'Online' : 'Offline') + extra;
     } else {
       el.className = 'conn off';
       el.innerHTML = '<span class="dot"></span> Modo local';
@@ -2127,6 +2267,11 @@ const SUPORTE_WHATSAPP = {
       return;
     }
 
+    if (navigator.onLine === false || !conectado) {
+      toast('Sem internet: cadastro avulso exige conexão. Offline, use "entrada rápida" de pessoas cadastradas.', 'erro');
+      return;
+    }
+
     var btn = $('#btnRegistrar');
     btn.disabled = true;
     btn.textContent = 'Salvando…';
@@ -2180,6 +2325,10 @@ const SUPORTE_WHATSAPP = {
 
   function excluirAcesso(id, msg) {
     if (!exigirAdmin('Somente o Admin pode excluir ou cancelar registros.')) return;
+    if (navigator.onLine === false || !conectado) {
+      toast('Excluir registros exige conexão com a internet.', 'erro');
+      return;
+    }
     if (!confirm(msg || 'Excluir este registro de acesso?')) return;
     docDelete('acessos', id).then(function () {
       toast('Registro excluído');
@@ -2193,6 +2342,10 @@ const SUPORTE_WHATSAPP = {
     if (!exigirAdmin('Somente o Admin pode excluir registros.')) return;
     var ids = String(idsCsv || '').split(',').filter(function (v) { return v; });
     if (!ids.length) return;
+    if (navigator.onLine === false || !conectado) {
+      toast('Excluir registros exige conexão com a internet.', 'erro');
+      return;
+    }
     if (!confirm(msg || 'Excluir ' + ids.length + ' registros?')) return;
     Promise.all(ids.map(function (id) {
       return docDelete('acessos', id);
@@ -2220,6 +2373,7 @@ const SUPORTE_WHATSAPP = {
 
     docAdd('acessos', {
       tipo: 'pessoa',
+      pessoaId: p.id,
       nome: p.nome,
       funcao: p.funcao || null,
       empresa: p.empresa || null,
@@ -3053,6 +3207,7 @@ const SUPORTE_WHATSAPP = {
       state.pessoas = ordenarPessoas(list);
       renderAll();
     }));
+    atualizarFila().then(function () { return Offline.sincronizar(); });
   }
 
   function entrar() {
@@ -3092,7 +3247,9 @@ const SUPORTE_WHATSAPP = {
       console.error(e);
       $('#loginErro').textContent = (e && e.status === 429)
         ? 'Muitas tentativas, aguarde alguns minutos'
-        : 'Credenciais inválidas';
+        : (e && !e.status)
+          ? 'Sem conexão. É preciso internet para entrar.'
+          : 'Credenciais inválidas';
     }).finally(function () {
       btn.disabled = false;
       btn.textContent = 'Entrar';
@@ -3207,18 +3364,44 @@ const SUPORTE_WHATSAPP = {
       abrirApp();
       return true;
     }).catch(function (e) {
+      if (ehErroDeRede(e)) {
+        // Sem internet ao abrir o app: segue offline por até 24 h desde o último contato.
+        if (Offline.limiteExcedido()) {
+          clearToken();
+          setUserSalvo(null);
+          $('#loginErro').textContent = 'Limite de 24 h offline atingido. Conecte-se para entrar.';
+          return false;
+        }
+        setConectado(false);
+        state.sessao = sessaoDe(salvo);
+        abrirApp();
+        return true;
+      }
       console.warn('Token salvo inválido, exigindo novo login:', e);
       clearToken();
       setUserSalvo(null);
+      Offline.limparDados(); // a fila é mantida para sincronizar após novo login
       return false;
     });
   }
 
   function sair() {
     var btn = $('#btnSair');
+    if (resumoFila.pendentes + resumoFila.rejeitados > 0 &&
+        !confirm('Há ' + (resumoFila.pendentes + resumoFila.rejeitados) + ' registro(s) offline não sincronizado(s). Sair agora APAGA esses registros.\n\nSair mesmo assim?')) {
+      return;
+    }
     btn.disabled = true;
     clearToken();
     setUserSalvo(null);
+    // Logout apaga fila, IndexedDB e caches de dados.
+    Offline.limparTudo().then(function () {
+      filaPendente = [];
+      resumoFila = { pendentes: 0, rejeitados: 0, erros: [] };
+      acessosBrutos = [];
+      pessoasConhecidas = [];
+      renderStatus();
+    });
     try {
       encerrarSessao();
     } catch (e) {
@@ -3238,6 +3421,8 @@ const SUPORTE_WHATSAPP = {
     state.sessao = null;
     state.acessos = [];
     state.pessoas = [];
+    acessosBrutos = [];
+    pessoasConhecidas = [];
     state.editPessoaId = null;
     state.usuarios = [];
     state.usuSenhaId = null;
@@ -3306,6 +3491,37 @@ const SUPORTE_WHATSAPP = {
     setTipo('veiculo');
     $('#loginScreen').hidden = false;
     $('#loginEmail').focus();
+
+    var pendentesAntes = 0;
+    Offline.onMudanca(function () {
+      atualizarFila().then(function () {
+        if (resumoFila.pendentes < pendentesAntes) recarregarDados(); // sincronizou: traz o estado do servidor
+        pendentesAntes = resumoFila.pendentes;
+      });
+    });
+    Offline.onLoginNecessario(function () {
+      sessaoExpiradaComFila('Sessão expirada. Entre novamente para sincronizar os registros pendentes.');
+    });
+    window.addEventListener('offline', function () { setConectado(false); });
+    window.addEventListener('online', recarregarDados);
+    setInterval(verificarLimiteOffline, 60000);
+    atualizarFila();
+
+    var statusEl = $('#statusConexao');
+    if (statusEl) {
+      statusEl.addEventListener('click', function () {
+        if (resumoFila.rejeitados > 0) {
+          var detalhe = resumoFila.erros.map(function (i) {
+            return (i.op === 'add' ? 'Entrada' : 'Saída') + ': ' + (i.erro || 'rejeitado');
+          }).join('\n');
+          if (confirm('Registros rejeitados pelo servidor:\n\n' + detalhe + '\n\nDescartar estes registros?')) {
+            Offline.descartarRejeitados();
+          }
+        } else if (resumoFila.pendentes > 0) {
+          Offline.sincronizar();
+        }
+      });
+    }
 
     restaurarSessao();
 
